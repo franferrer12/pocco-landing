@@ -1,92 +1,72 @@
-# Pocco Club - Landing Page
+# 🎉 Pocco Club - Landing Page
 
-Landing page oficial de Pocco Club Alzira con diseño personalizado.
+Landing page oficial de **Pocco Club Alzira** - "De lo bueno POCCO"
 
-## 🎯 Descripción
+## 🚀 Inicio Rápido
 
-Página web estática para Pocco Club, adaptada desde la plantilla de Fitz Club Madrid con personalización completa de branding, colores corporativos y contenido.
+Abre directamente: **`index.html`** en tu navegador.
 
-## 📁 Archivos Principales
+Si hay problemas de caché: **Ctrl + Shift + R**
 
-- **`pocco.html`** - Versión principal con todos los cambios (USAR ESTE)
-- **`pocco-v2.html`** - Backup limpio
-- **`index.html`** - Versión antigua (no usar)
-- **`logo-pocco-header.png`** - Logo oficial Pocco
-- **`pocco-01.jpg` a `pocco-05.jpg`** - Fotos hero slider
+## 📁 Estructura del Proyecto
 
-## 🎨 Personalización Aplicada
-
-### Hero Section (95% completo)
-- ✅ Slider con 5 fotos reales de Pocco Club
-- ✅ Marquee "de lo bueno POCCO" (color #520100)
-- ✅ Fuentes: Verdana + Georgia italic bold
-- ✅ Degradado negro en imágenes
-- ✅ Z-index configurado (texto sobre fotos)
-
-### Header (70% completo)
-- ✅ Botón "Mesas VIP" rojo oscuro (#520100)
-- ⏳ Logo pendiente implementar
-
-### Colores Corporativos
-- **Rojo principal**: `#520100`
-- **Rojo hover**: `#7a0200`
-- **Texto**: `#FFFFFF` (blanco)
-
-## 🚀 Cómo usar
-
-### Abrir localmente
-```bash
-# Opción 1: Abrir archivo principal
-start pocco.html
-
-# Opción 2: Si hay caché, usar backup
-start pocco-v2.html
+```
+pocco-landing/
+├── index.html              # ⭐ Página principal (USAR ESTE)
+├── images/                 # Fotos y logo
+│   ├── pocco-01.jpg       # Foto hero 1
+│   ├── pocco-02.jpg       # Foto hero 2
+│   ├── pocco-03.jpg       # Foto hero 3
+│   ├── pocco-04.jpg       # Foto hero 4
+│   ├── pocco-05.jpg       # Foto hero 5
+│   └── logo-pocco-header.png  # Logo oficial
+├── scripts/                # Scripts de automatización (27 archivos)
+│   ├── fix-header-v2.ps1
+│   ├── fix-hero-images.ps1
+│   └── ...
+├── docs/                   # Documentación
+│   ├── README.md          # README detallado
+│   ├── CAMBIOS-SESION-2025-11-12.md
+│   └── ESTRUCTURA-WEB.md
+└── backup/                 # Versiones antiguas
+    ├── index-old.html     # Versión del 11/11/2025
+    └── pocco-v2.html      # Backup limpio
 ```
 
-### Forzar recarga (eliminar caché)
-Presionar: **Ctrl + Shift + R**
+## 🎨 Características Implementadas
 
-## 📝 Documentación
+### ✅ Completado
+- **Hero Slider** con 5 fotos reales de Pocco
+- **Marquee "de lo bueno POCCO"** (rojo #520100)
+- **Botón Mesas VIP** estilizado
+- **Degradado negro** en imágenes hero
+- **Z-index** optimizado
 
-- **`CAMBIOS-SESION-2025-11-12.md`** - Registro detallado de todos los cambios
-- **`ESTRUCTURA-WEB.md`** - Estructura y planificación del sitio
-- Scripts PowerShell (`.ps1`) - Automatización de modificaciones
+### 🔧 Colores Corporativos
+- Rojo principal: `#520100`
+- Rojo hover: `#7a0200`
+- Texto: `#FFFFFF`
 
-## 🔧 Scripts PowerShell Disponibles
+## 📊 Estado del Proyecto
 
-Los scripts están documentados para futuras modificaciones:
-- `fix-header-v2.ps1` - Modificar header
-- `fix-hero-images.ps1` - Cambiar imágenes del hero
-- `fix-mesas-vip-button.ps1` - Estilizar botón VIP
-- Y más...
+| Sección | Progreso |
+|---------|----------|
+| Hero/Slider | 95% ✅ |
+| Header | 70% 🟡 |
+| Marquees | 100% ✅ |
+| Resto | Pendiente ⏳ |
 
-## 📊 Estado Actual
+## 📞 Contacto Pocco Club
 
-| Sección | Estado | Progreso |
-|---------|--------|----------|
-| Header | 🟡 En progreso | 70% |
-| Hero/Slider | 🟢 Completo | 95% |
-| Marquees | 🟢 Completo | 100% |
-| Corporate/Eventos | 🔴 Pendiente | 0% |
-| Galería | 🔴 Pendiente | 0% |
-| Planos VIP | 🔴 Pendiente | 0% |
-| Artistas/DJs | 🔴 Pendiente | 0% |
-| Videos | 🔴 Pendiente | 0% |
-| Contacto | 🟡 En progreso | 30% |
-| Footer | 🔴 Pendiente | 0% |
+- **📍** Calle Guadassuar, 4, 46600 Alzira, Valencia
+- **📱** +34 614 868 148
+- **📸** [@pocco.club](https://instagram.com/pocco.club)
 
-## 📞 Información de Contacto
+## 📖 Documentación
 
-- **Teléfono**: +34 614 868 148
-- **Instagram**: [@pocco.club](https://instagram.com/pocco.club)
-- **Ubicación**: Calle Guadassuar, 4, 46600 Alzira, Valencia
-
-## 🎉 Créditos
-
-- **Cliente**: Pocco Club Alzira
-- **Desarrollo**: Adaptado con Claude Code
-- **Plantilla base**: Fitz Club Madrid
+Ver detalles completos en: **[docs/README.md](docs/README.md)**
 
 ---
 
 **Última actualización**: 12/11/2025
+**Repositorio**: [github.com/franferrer12/pocco-landing](https://github.com/franferrer12/pocco-landing)

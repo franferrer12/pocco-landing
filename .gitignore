@@ -1,0 +1,14 @@
+# Archivos temporales
+temp-*.txt
+*.tmp
+
+# Backups antiguos (mantener solo los principales)
+*-backup-*.html
+
+# Node modules si se agregan en el futuro
+node_modules/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+desktop.ini

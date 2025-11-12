@@ -1,0 +1,17 @@
+# Handle line endings automatically
+* text=auto
+
+# HTML files
+*.html text eol=lf
+
+# Markdown files
+*.md text eol=lf
+
+# PowerShell scripts
+*.ps1 text eol=crlf
+
+# Images (binary)
+*.jpg binary
+*.png binary
+*.gif binary
+*.ico binary

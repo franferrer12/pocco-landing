@@ -2,423 +2,225 @@
 
 ## 🎯 Resumen
 
-Esta guía explica paso a paso cómo agregar nuevos eventos al calendario de pocco.club **SIN ROMPER** el código existente.
+Esta guía explica el proceso real para agregar eventos a las webs de **POCCO Club** y **TRENDY The Party**.
+
+Ambas webs funcionan con **HTML estático**, por lo que los eventos se agregan editando directamente el código HTML.
 
 ---
 
-## ⚠️ REGLAS DE ORO
+## 📋 Proceso para Agregar Eventos
 
-1. **NUNCA modifiques manualmente** el HTML/CSS/JavaScript de la página 198
-2. **SIEMPRE limpia la caché** de LiteSpeed después de cualquier cambio
-3. **PRUEBA en móvil y desktop** después de agregar eventos
-4. **HAZ BACKUP** antes de modificaciones grandes
+### Paso 1: Proporcionar Información del Evento
 
----
+El usuario debe proporcionar la siguiente información:
 
-## 🚀 Opción 1: Agregar Evento Manualmente (WordPress Admin)
+**Datos requeridos:**
+- ✅ **Fecha del evento** (formato: DD/MM/YYYY o YYYY-MM-DD)
+- ✅ **Nombre del evento** (ej: "POCCO IS CALLING vol.2")
+- ✅ **Imagen del evento** (URL de la imagen o archivo local)
+- ✅ **URL de EnterTicket** (enlace para comprar entradas)
+- ⚠️ **Web destino** (POCCO o TRENDY)
 
-Esta es la forma más segura y recomendada.
+**Datos opcionales:**
+- Hora del evento (ej: "23:00h")
+- Descripción adicional
+- Información de DJs o artistas
 
-### Paso 1: Acceder al Panel de WordPress
+**Ejemplo de mensaje para agregar evento:**
 
-1. Ve a: https://pocco.club/wp-admin/
-2. Inicia sesión con tus credenciales de administrador
-
-### Paso 2: Ir a Eventos
-
-Si tienes un plugin de eventos (The Events Calendar, etc.):
-
-1. En el menú lateral, busca **"Eventos"** o **"Events"**
-2. Haz clic en **"Añadir nuevo"** o **"Add New"**
-
-### Paso 3: Rellenar Información del Evento
-
-Información requerida:
-
-- **Título**: Nombre del evento (ej: "Noche de Reggaeton")
-- **Descripción**: Detalles del evento
-- **Fecha**: Día y hora del evento
-- **Hora**: Hora de inicio (ej: 23:00)
-- **Lugar**: "Pocco Club" o ubicación específica
-- **Imagen destacada**: Poster o imagen del evento (recomendado)
-
-### Paso 4: Publicar
-
-1. Verifica que todos los campos estén completos
-2. Haz clic en **"Publicar"**
-3. El evento aparecerá automáticamente en el calendario
-
-### Paso 5: Limpiar Caché
-
-**MUY IMPORTANTE**: Después de publicar, limpia la caché:
-
-1. En el panel de WordPress, busca el menú de **LiteSpeed Cache**
-2. Haz clic en **"Purge All"** o **"Limpiar Todo"**
-3. O ejecuta este comando en terminal:
-   ```bash
-   curl -X POST "https://pocco.club/wp-json/litespeed/v1/purge_all"
-   ```
-
-### Paso 6: Verificar
-
-1. Abre https://pocco.club/eventos en **modo incógnito**
-2. Busca el mes del evento
-3. Verifica que aparezca el **punto rojo** en el día correcto
-4. Haz clic en el día para ver el popup con la información
-5. **Prueba en móvil** también
-
----
-
-## 🔧 Opción 2: Agregar Evento por PHP Script
-
-Para eventos más complejos o agregar múltiples eventos a la vez.
-
-### Template de Script
-
-Usa el template en: `/Users/franferrer/pocco-web/scripts/template-add-event.php`
-
-```php
-<?php
-// Script para agregar un nuevo evento
-
-$db_name = 'u381629691_VGByx';
-$db_user = 'u381629691_melFW';
-$db_pass = 'C9v9ju5G6B';
-$db_host = '127.0.0.1';
-
-try {
-    $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8mb4", $db_user, $db_pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-    echo "=== AGREGANDO NUEVO EVENTO ===\n\n";
-
-    // CONFIGURACIÓN DEL EVENTO
-    $event_title = "Noche de Reggaeton";
-    $event_date = "2025-12-15";           // Formato: YYYY-MM-DD
-    $event_time = "23:00";                // Formato: HH:MM
-    $event_description = "La mejor noche de reggaeton del mes";
-    $event_location = "Pocco Club";
-
-    // Insertar evento
-    $stmt = $pdo->prepare("
-        INSERT INTO wp_posts (
-            post_author,
-            post_date,
-            post_date_gmt,
-            post_content,
-            post_title,
-            post_status,
-            post_type,
-            post_modified,
-            post_modified_gmt
-        ) VALUES (
-            1,
-            NOW(),
-            UTC_TIMESTAMP(),
-            :description,
-            :title,
-            'publish',
-            'tribe_events',
-            NOW(),
-            UTC_TIMESTAMP()
-        )
-    ");
-
-    $stmt->bindParam(':title', $event_title);
-    $stmt->bindParam(':description', $event_description);
-    $stmt->execute();
-
-    $event_id = $pdo->lastInsertId();
-
-    echo "✅ Evento creado con ID: $event_id\n";
-
-    // Agregar metadatos del evento (fecha, hora, etc.)
-    $meta_data = [
-        '_EventStartDate' => "$event_date $event_time:00",
-        '_EventEndDate' => "$event_date 05:00:00",
-        '_EventVenueID' => "0",
-        '_EventShowMapLink' => "1",
-        '_EventShowMap' => "1",
-        '_EventTimezone' => "Europe/Madrid",
-    ];
-
-    foreach ($meta_data as $meta_key => $meta_value) {
-        $stmt = $pdo->prepare("
-            INSERT INTO wp_postmeta (post_id, meta_key, meta_value)
-            VALUES (:post_id, :meta_key, :meta_value)
-        ");
-        $stmt->bindParam(':post_id', $event_id);
-        $stmt->bindParam(':meta_key', $meta_key);
-        $stmt->bindParam(':meta_value', $meta_value);
-        $stmt->execute();
-    }
-
-    echo "✅ Metadatos del evento agregados\n\n";
-
-    // Limpiar cache
-    @file_get_contents("https://pocco.club/wp-json/litespeed/v1/purge_all");
-    sleep(1);
-    @file_get_contents("https://pocco.club/wp-json/litespeed/v1/purge_all");
-
-    echo "✅ Cache limpiado\n";
-    echo "🎯 Evento agregado exitosamente!\n";
-    echo "   Verifica en: https://pocco.club/eventos\n\n";
-
-    // Auto-eliminar
-    @unlink(__FILE__);
-    echo "✅ Script eliminado\n";
-
-} catch (PDOException $e) {
-    die("❌ Error: " . $e->getMessage() . "\n");
-}
-?>
+```
+Agregar evento a POCCO:
+- Fecha: 14 febrero 2025
+- Nombre: San Valentín - La Noche del Amor
+- Imagen: https://i.imgur.com/ejemplo.jpg
+- EnterTicket: https://venta.enterticket.es/evento/12345
+- Hora: 23:00h
 ```
 
-### Pasos para Usar el Script:
+### Paso 2: Edición del HTML
 
-1. **Copia el template**:
-   ```bash
-   cp /Users/franferrer/pocco-web/scripts/template-add-event.php /tmp/add-event-$(date +%Y%m%d).php
-   ```
+El sistema (Claude Code) edita el archivo HTML correspondiente:
 
-2. **Edita el archivo**:
-   ```bash
-   nano /tmp/add-event-$(date +%Y%m%d).php
-   ```
+**Para POCCO Club:**
+- Archivo: `/Users/franferrer/pocco-web/sites/pocco/index.html`
+- Servidor: `/domains/pocco.club/public_html/index.html`
 
-3. **Modifica los datos del evento**:
-   - Cambia `$event_title`
-   - Cambia `$event_date` (formato: YYYY-MM-DD)
-   - Cambia `$event_time` (formato: HH:MM)
-   - Cambia `$event_description`
+**Para TRENDY:**
+- Archivo: `/Users/franferrer/pocco-web/sites/trendy/index.html`
+- Servidor: `/domains/pocco.club/public_html/trendy/index.html`
 
-4. **Sube el script al servidor**:
-   ```bash
-   PASS_ENCODED="%2F%3DkMj%3Drz9%24%5D4.%5D-"
-   HOST="194.164.74.18"
-   USER="u381629691"
+### Paso 3: Subida al Servidor
 
-   curl -s --ftp-pasv -T /tmp/add-event-*.php "ftp://$USER:$PASS_ENCODED@$HOST/domains/pocco.club/public_html/"
-   ```
+El archivo modificado se sube automáticamente al servidor vía FTP:
 
-5. **Ejecuta el script**:
-   ```bash
-   curl https://pocco.club/add-event-20251209.php
-   ```
-
-6. **El script se auto-elimina** después de ejecutarse
-
-7. **Verifica** el evento en https://pocco.club/eventos
-
----
-
-## 🔍 Verificación Post-Agregado
-
-Después de agregar un evento, SIEMPRE verifica:
-
-### ✅ Checklist de Verificación:
-
-- [ ] El evento aparece en el mes correcto
-- [ ] El **punto rojo** aparece debajo del número del día
-- [ ] Al hacer clic, se abre el popup con la información correcta
-- [ ] El popup muestra:
-  - [ ] Título del evento
-  - [ ] Descripción
-  - [ ] Hora (si está disponible)
-  - [ ] Punto rojo como indicador
-- [ ] **En móvil** (≤ 768px):
-  - [ ] El punto rojo es más pequeño (6px)
-  - [ ] El punto está bien posicionado
-  - [ ] El popup se muestra correctamente
-- [ ] La sección de VIPs sigue funcionando:
-  - [ ] En móvil, scroll automático al VIP del centro
-  - [ ] Los 3 VIPs se muestran correctamente
-- [ ] Los botones de navegación (← →) funcionan:
-  - [ ] Se ponen rojos al hacer hover
-  - [ ] Vuelven a color normal después del clic
-  - [ ] No se quedan "pegados" en color
-
----
-
-## 🚨 Solución de Problemas
-
-### Problema: El evento no aparece en el calendario
-
-**Posibles causas**:
-1. Caché de LiteSpeed no limpiada
-2. Fecha del evento en formato incorrecto
-3. El post_type no es 'tribe_events'
-
-**Solución**:
 ```bash
-# Limpiar caché (ejecutar 2 veces)
-curl -X POST "https://pocco.club/wp-json/litespeed/v1/purge_all"
-sleep 1
-curl -X POST "https://pocco.club/wp-json/litespeed/v1/purge_all"
+PASS_ENCODED="%2F%3DkMj%3Drz9%24%5D4.%5D-"
+HOST="194.164.74.18"
+USER="u381629691"
 
-# Verificar en la base de datos
-mysql -h 127.0.0.1 -u u381629691_melFW -p u381629691_VGByx
+# Para POCCO
+curl --ftp-pasv -T sites/pocco/index.html \
+  "ftp://$USER:$PASS_ENCODED@$HOST/domains/pocco.club/public_html/index.html"
 
-SELECT ID, post_title, post_date, post_type, post_status
-FROM wp_posts
-WHERE post_type = 'tribe_events'
-ORDER BY post_date DESC
-LIMIT 5;
+# Para TRENDY
+curl --ftp-pasv -T sites/trendy/index.html \
+  "ftp://$USER:$PASS_ENCODED@$HOST/domains/pocco.club/public_html/trendy/index.html"
 ```
 
-### Problema: No aparece el punto rojo
+### Paso 4: Verificación
 
-**Posibles causas**:
-1. El día no tiene la clase `.has-event`
-2. El JavaScript no detectó el evento
-3. CSS del punto rojo fue modificado
+Después de subir, verificar:
 
-**Solución**:
-1. Abre la consola del navegador (F12)
-2. Busca errores de JavaScript
-3. Verifica que el día tenga el atributo `data-event`
-4. Comprueba que el CSS del punto rojo está presente:
-   ```css
-   .calendar-day.has-event::after {
-       content: '';
-       position: absolute;
-       top: 75%;
-       left: 50%;
-       transform: translateX(-50%);
-       width: 8px;
-       height: 8px;
-       background: #ff0000;
-       border-radius: 50%;
-       z-index: 2;
-   }
+✅ **Para POCCO:** https://pocco.club/
+✅ **Para TRENDY:** https://trendy.pocco.club/
+
+**Checklist:**
+- [ ] El evento aparece en el calendario
+- [ ] La fecha es correcta
+- [ ] La imagen se muestra correctamente
+- [ ] El botón de compra funciona (enlace a EnterTicket)
+- [ ] Se ve bien en móvil y desktop
+- [ ] El color de la marca es correcto (rojo para POCCO, rosa para TRENDY)
+
+---
+
+## 🎨 Diferencias entre POCCO y TRENDY
+
+| Característica | POCCO Club | TRENDY |
+|----------------|------------|--------|
+| **Color principal** | Rojo `#791f22` | Rosa magenta `#E91E8C` |
+| **Público** | +18 años | +16 años |
+| **Slogan** | "De lo bueno, POCCO" | "THE PARTY" |
+| **URL** | https://pocco.club/ | https://trendy.pocco.club/ |
+| **Archivo HTML** | `sites/pocco/index.html` | `sites/trendy/index.html` |
+| **Servidor** | `public_html/index.html` | `public_html/trendy/index.html` |
+
+---
+
+## 🔧 Estructura del Código de Eventos
+
+Cada evento en el HTML tiene esta estructura:
+
+```javascript
+{
+    fecha: '2025-02-14',
+    nombre: 'San Valentín - La Noche del Amor',
+    imagen: 'https://i.imgur.com/ejemplo.jpg',
+    enterticket: 'https://venta.enterticket.es/evento/12345',
+    hora: '23:00h'
+}
+```
+
+**Ubicación en el HTML:**
+- Buscar el array `eventos = [...]` en el código JavaScript
+- Los eventos se ordenan por fecha automáticamente
+- El calendario detecta automáticamente los eventos y muestra puntos rojos en los días correspondientes
+
+---
+
+## ✅ Modificaciones Estéticas
+
+Además de añadir eventos, se pueden hacer cambios estéticos:
+
+### Para POCCO Club:
+
+**Cambiar colores:**
+- Buscar `--color-primary: #791f22` en el CSS
+- Editar `/Users/franferrer/pocco-web/sites/pocco/index.html`
+
+**Cambiar textos:**
+- Buscar el texto a modificar en el HTML
+- Reemplazar y guardar
+
+**Subir cambios:**
+```bash
+curl --ftp-pasv -T sites/pocco/index.html \
+  "ftp://$USER:$PASS_ENCODED@$HOST/domains/pocco.club/public_html/index.html"
+```
+
+### Para TRENDY:
+
+**Cambiar colores:**
+- Buscar `--color-primary: #E91E8C` en el CSS
+- Editar `/Users/franferrer/pocco-web/sites/trendy/index.html`
+
+**Cambiar textos:**
+- Buscar el texto a modificar en el HTML
+- Reemplazar y guardar
+
+**Subir cambios:**
+```bash
+curl --ftp-pasv -T sites/trendy/index.html \
+  "ftp://$USER:$PASS_ENCODED@$HOST/domains/pocco.club/public_html/trendy/index.html"
+```
+
+---
+
+## 🚨 Importante
+
+### ⚠️ Antes de Modificar:
+
+1. **Hacer backup** del archivo HTML actual
+   ```bash
+   cp sites/pocco/index.html backups/BACKUP_pocco_$(date +%Y%m%d_%H%M%S).html
+   cp sites/trendy/index.html backups/BACKUP_trendy_$(date +%Y%m%d_%H%M%S).html
    ```
 
-### Problema: El calendario no muestra el evento en el mes correcto
+2. **Probar en local** si es posible (abrir el HTML en el navegador)
 
-**Causa**: La variable `minDate` puede estar limitando la visualización
+3. **Verificar sintaxis** JavaScript si se editan eventos manualmente
 
-**Solución**: Verificar que el código tiene:
+### ✅ Después de Modificar:
+
+1. **Verificar en el navegador** (modo incógnito para evitar caché)
+2. **Probar en móvil y desktop**
+3. **Verificar que los enlaces funcionan** (botones de compra, imágenes, etc.)
+4. **Hacer commit a Git** si los cambios son importantes
+   ```bash
+   git add sites/pocco/index.html
+   git commit -m "Agregar evento: [nombre del evento]"
+   git push origin main
+   ```
+
+---
+
+## 📱 Ejemplos de Eventos
+
+### Ejemplo 1: Evento de POCCO Club
+
 ```javascript
-var currentDate = new Date();
-var minDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 2, 1);
-// Sin maxDate definido (muestra todos los eventos futuros)
-```
-
-### Problema: El popup no muestra información del evento
-
-**Causa**: El atributo `data-event` no está bien formado
-
-**Solución**: Verificar en la consola del navegador que el evento tiene:
-```html
-<div class="calendar-day has-event" data-event='{"title":"Evento","description":"...","time":"23:00"}'>
-```
-
----
-
-## 📊 Base de Datos: Estructura de Eventos
-
-### Tabla: wp_posts
-
-```sql
-ID:              [Auto-generado]
-post_author:     1
-post_date:       [Fecha actual]
-post_date_gmt:   [Fecha actual UTC]
-post_content:    [Descripción del evento]
-post_title:      [Título del evento]
-post_status:     'publish'
-post_type:       'tribe_events'  ← IMPORTANTE
-post_modified:   [Auto-actualizado]
-post_modified_gmt: [Auto-actualizado UTC]
-```
-
-### Tabla: wp_postmeta
-
-Metadatos importantes del evento:
-
-```sql
-_EventStartDate:  "2025-12-15 23:00:00"
-_EventEndDate:    "2025-12-16 05:00:00"
-_EventVenueID:    "0"
-_EventShowMapLink: "1"
-_EventShowMap:    "1"
-_EventTimezone:   "Europe/Madrid"
-```
-
----
-
-## 🎨 Personalización de Eventos
-
-### Cambiar el Color del Punto
-
-En la página 198, buscar el CSS:
-
-```css
-.calendar-day.has-event::after {
-    background: #ff0000;  ← Cambiar este color
+{
+    fecha: '2025-01-31',
+    nombre: 'POCCO IS CALLING vol.2 by Alonso Chover',
+    imagen: 'https://i.imgur.com/XYZ123.jpg',
+    enterticket: 'https://venta.enterticket.es/evento/53689',
+    hora: '23:59h'
 }
 ```
 
-Colores sugeridos:
-- Rojo: `#ff0000` (actual)
-- Rosa: `#e91e63`
-- Azul: `#2196f3`
-- Verde: `#4caf50`
+### Ejemplo 2: Evento de TRENDY
 
-### Cambiar el Tamaño del Punto
-
-```css
-.calendar-day.has-event::after {
-    width: 8px;   ← Cambiar tamaño
-    height: 8px;  ← Cambiar tamaño
+```javascript
+{
+    fecha: '2025-02-14',
+    nombre: 'San Valentín - La Noche de las Tentaciones',
+    imagen: 'https://i.imgur.com/ABC456.jpg',
+    enterticket: 'https://venta.enterticket.es/evento/54321',
+    hora: '23:00h'
 }
 ```
 
-### Cambiar la Posición del Punto
+### Ejemplo 3: Evento de Tardeo (día completo)
 
-```css
-.calendar-day.has-event::after {
-    top: 75%;  ← Ajustar posición vertical (0% = arriba, 100% = abajo)
+```javascript
+{
+    fecha: '2025-01-24',
+    nombre: 'Un POCCO de flamenco - Tardeo',
+    imagen: 'https://i.imgur.com/DEF789.jpg',
+    enterticket: 'https://venta.enterticket.es/evento/53545',
+    hora: '17:30h - 23:59h'
 }
 ```
-
-**NOTA**: Después de cualquier cambio en CSS, recordar limpiar la caché.
-
----
-
-## 📱 Eventos Especiales y Casos de Uso
-
-### Evento de Todo el Día
-
-```php
-$event_time = "00:00";
-$meta_data = [
-    '_EventAllDay' => 'yes',
-    '_EventStartDate' => "$event_date 00:00:00",
-    '_EventEndDate' => "$event_date 23:59:59",
-];
-```
-
-### Evento de Varios Días
-
-```php
-$event_start_date = "2025-12-15";
-$event_end_date = "2025-12-17";
-
-$meta_data = [
-    '_EventStartDate' => "$event_start_date 23:00:00",
-    '_EventEndDate' => "$event_end_date 05:00:00",
-];
-```
-
-**NOTA**: El calendario mostrará el punto rojo en todos los días del rango.
-
-### Evento Recurrente
-
-Para eventos que se repiten (ej: todos los viernes), necesitarás:
-
-1. Usar el plugin de eventos (The Events Calendar Pro)
-2. O crear múltiples entradas de eventos con un script en bucle
 
 ---
 
@@ -426,58 +228,65 @@ Para eventos que se repiten (ej: todos los viernes), necesitarás:
 
 ### Editar Evento Existente
 
-#### Opción 1: WordPress Admin
-1. Ve a **Eventos** → **Todos los eventos**
-2. Busca el evento
-3. Haz clic en **"Editar"**
-4. Modifica los campos necesarios
-5. Haz clic en **"Actualizar"**
-6. **Limpia la caché**
-
-#### Opción 2: Script PHP
-```php
-$event_id = 123; // ID del evento a modificar
-
-$stmt = $pdo->prepare("
-    UPDATE wp_posts
-    SET post_title = :title,
-        post_content = :description,
-        post_modified = NOW(),
-        post_modified_gmt = UTC_TIMESTAMP()
-    WHERE ID = :id
-");
-$stmt->bindParam(':id', $event_id);
-$stmt->bindParam(':title', $new_title);
-$stmt->bindParam(':description', $new_description);
-$stmt->execute();
-```
+1. Abrir el archivo HTML correspondiente
+2. Buscar el evento en el array `eventos = [...]`
+3. Modificar los campos necesarios
+4. Guardar y subir al servidor
 
 ### Eliminar Evento
 
-#### Opción 1: WordPress Admin
-1. Ve a **Eventos** → **Todos los eventos**
-2. Busca el evento
-3. Haz clic en **"Papelera"** o **"Trash"**
-4. (Opcional) Vaciar papelera para eliminar permanentemente
-5. **Limpia la caché**
+1. Abrir el archivo HTML correspondiente
+2. Buscar el evento en el array `eventos = [...]`
+3. Eliminar el objeto completo del evento (incluir comas)
+4. Guardar y subir al servidor
 
-#### Opción 2: Script PHP
-```php
-$event_id = 123; // ID del evento a eliminar
+**Ejemplo de eliminación:**
 
-$stmt = $pdo->prepare("UPDATE wp_posts SET post_status = 'trash' WHERE ID = :id");
-$stmt->bindParam(':id', $event_id);
-$stmt->execute();
+Antes:
+```javascript
+eventos = [
+    { fecha: '2025-01-17', nombre: 'Evento antiguo', ... },
+    { fecha: '2025-01-24', nombre: 'Evento a eliminar', ... },  ← Eliminar esta línea
+    { fecha: '2025-01-31', nombre: 'Evento futuro', ... }
+]
+```
 
-// O eliminar permanentemente:
-$stmt = $pdo->prepare("DELETE FROM wp_posts WHERE ID = :id");
-$stmt->bindParam(':id', $event_id);
-$stmt->execute();
+Después:
+```javascript
+eventos = [
+    { fecha: '2025-01-17', nombre: 'Evento antiguo', ... },
+    { fecha: '2025-01-31', nombre: 'Evento futuro', ... }
+]
+```
 
-// También eliminar metadatos:
-$stmt = $pdo->prepare("DELETE FROM wp_postmeta WHERE post_id = :id");
-$stmt->bindParam(':id', $event_id);
-$stmt->execute();
+---
+
+## 📊 Archivos del Proyecto
+
+### Estructura del Proyecto:
+
+```
+pocco-web/
+├── sites/
+│   ├── pocco/
+│   │   └── index.html          # HTML de POCCO Club
+│   └── trendy/
+│       └── index.html          # HTML de TRENDY
+├── assets/
+│   ├── pocco/                  # Recursos de POCCO
+│   └── trendy/                 # Recursos de TRENDY
+│       ├── logo-trendy.png
+│       ├── cartel-exams-break.png
+│       └── cartel-san-valentin.png
+├── docs/
+│   ├── ACCESOS.md              # Credenciales FTP/DB
+│   ├── AGREGAR-EVENTOS.md      # Esta guía
+│   ├── CAMBIOS-REALIZADOS.md   # Historial
+│   ├── TROUBLESHOOTING.md      # Solución de problemas
+│   └── TRENDY.md               # Info de TRENDY
+├── backups/                    # Backups de HTML
+│   └── BACKUP_*.html
+└── README.md                   # Documentación principal
 ```
 
 ---
@@ -485,75 +294,86 @@ $stmt->execute();
 ## 💡 Tips y Mejores Prácticas
 
 ### ✅ Hacer:
-- Siempre hacer backup antes de cambios grandes
-- Probar en modo incógnito para ver cambios reales
-- Limpiar caché después de CADA modificación
-- Usar scripts PHP con auto-eliminación (`unlink(__FILE__)`)
-- Verificar en móvil Y desktop
-- Usar fechas en formato ISO (YYYY-MM-DD HH:MM:SS)
+
+- Proporcionar toda la información del evento de una vez
+- Usar URLs de imágenes alojadas (Imgur, EnterTicket, etc.)
+- Verificar que las URLs de EnterTicket funcionen antes de agregarlas
+- Especificar claramente la web destino (POCCO o TRENDY)
+- Revisar los eventos después de subirlos
+- Hacer backup antes de cambios grandes
 
 ### ❌ No Hacer:
-- No modificar el código de la página 198 manualmente
-- No usar el editor de WordPress para cambiar HTML/CSS/JavaScript
-- No olvidar limpiar la caché
-- No agregar eventos con fechas en formato incorrecto
-- No usar post_type diferente a 'tribe_events'
-- No dejar scripts PHP en el servidor público
+
+- No editar el HTML manualmente sin conocimientos técnicos
+- No olvidar especificar la web destino
+- No usar imágenes rotas o enlaces incorrectos
+- No agregar eventos con fechas pasadas (a menos que sea intencional)
+- No modificar código JavaScript sin verificar sintaxis
 
 ---
 
-## 📞 Ayuda y Debugging
+## 🆘 Solución de Problemas
 
-### Ver Logs de Eventos
+### Problema: El evento no aparece
 
-```bash
-# Conectar a la base de datos
-mysql -h 127.0.0.1 -u u381629691_melFW -p u381629691_VGByx
+**Posibles causas:**
+- El archivo no se subió correctamente al servidor
+- Caché del navegador (probar en modo incógnito)
+- Fecha en formato incorrecto
 
-# Ver últimos 10 eventos
-SELECT ID, post_title, post_date, post_status, post_type
-FROM wp_posts
-WHERE post_type = 'tribe_events'
-ORDER BY post_date DESC
-LIMIT 10;
+**Solución:**
+1. Verificar que el archivo se subió: `curl -I https://pocco.club/`
+2. Abrir en modo incógnito
+3. Verificar formato de fecha: `YYYY-MM-DD`
 
-# Ver metadatos de un evento específico
-SELECT meta_key, meta_value
-FROM wp_postmeta
-WHERE post_id = 123;
+### Problema: La imagen no se muestra
 
-# Contar eventos por mes
-SELECT
-    DATE_FORMAT(post_date, '%Y-%m') as month,
-    COUNT(*) as total
-FROM wp_posts
-WHERE post_type = 'tribe_events'
-    AND post_status = 'publish'
-GROUP BY month
-ORDER BY month DESC;
-```
+**Posibles causas:**
+- URL de la imagen incorrecta
+- Imagen eliminada del servidor original
+- Problema de CORS
 
-### Verificar Configuración del Calendario
+**Solución:**
+1. Verificar que la URL funciona (abrir en navegador)
+2. Subir la imagen a un servidor estable (Imgur, etc.)
+3. Usar HTTPS en la URL de la imagen
 
-Abre la consola del navegador (F12) y ejecuta:
+### Problema: El botón de compra no funciona
 
-```javascript
-// Ver eventos cargados
-console.log(events);
+**Posibles causas:**
+- URL de EnterTicket incorrecta
+- Evento no publicado en EnterTicket
 
-// Ver fecha actual del calendario
-console.log(currentDate);
-
-// Ver minDate/maxDate
-console.log(minDate);
-console.log(maxDate);
-```
+**Solución:**
+1. Verificar la URL en el navegador
+2. Contactar con EnterTicket si el evento no está publicado
 
 ---
 
-**Última actualización**: 2025-12-09
-**Versión**: 1.0
+## 📞 Contacto y Ayuda
 
-Para cualquier duda, consulta:
-- `ACCESOS.md` - Credenciales y conexiones
-- `CAMBIOS-REALIZADOS.md` - Historial de modificaciones
+**Para agregar eventos:**
+- Proporcionar la información del evento en el formato indicado
+- Especificar claramente POCCO o TRENDY
+- Incluir todos los datos necesarios (fecha, nombre, imagen, URL)
+
+**Para modificaciones estéticas:**
+- Describir el cambio deseado
+- Especificar la web (POCCO o TRENDY)
+- Proporcionar ejemplos si es necesario
+
+**Archivos de referencia:**
+- `ACCESOS.md` - Credenciales y accesos
+- `TRENDY.md` - Información de TRENDY
+- `TROUBLESHOOTING.md` - Solución de problemas técnicos
+
+---
+
+**Última actualización**: 2026-01-30
+**Versión**: 2.0
+
+**Cambios en esta versión:**
+- Actualizado para reflejar el proceso real (edición directa de HTML)
+- Añadida sección para TRENDY
+- Eliminadas referencias a WordPress/PHP
+- Simplificado el proceso de agregar eventos

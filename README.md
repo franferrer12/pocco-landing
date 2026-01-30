@@ -65,5 +65,14 @@ Si algo se rompe o no funciona:
 
 ---
 
-**Última actualización**: 2025-12-09
-**Versión**: 1.0
+## 📅 Eventos Actuales (Enero 2026)
+
+1. **17 enero** - POCCO CLUB (EnterTicket ID: 53277)
+2. **24 enero** - Un POCCO de flamenco - Tardeo 17:30-23:59 (ID: 53545)
+3. **24 enero** - Pocco Club - Noche 23:59-6:30 (ID: 53569)
+4. **31 enero** - POCCO IS CALLING vol.2 by Alonso Chover (ID: 53689)
+
+---
+
+**Última actualización**: 2026-01-30
+**Versión**: 2.0

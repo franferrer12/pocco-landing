@@ -1,0 +1,21 @@
+# Ignorar archivos sensibles
+docs/ACCESOS.md
+
+# Ignorar backups (son muy grandes)
+backups/*.html
+backups/*.sql
+backups/*.json
+
+# Excepto el README de backups
+!backups/README.md
+
+# Ignorar archivos temporales
+*.tmp
+*.log
+.DS_Store
+
+# Ignorar scripts ejecutados (los templates están bien)
+scripts/ejecutados/
+
+# Node modules si se usa Node para algo
+node_modules/

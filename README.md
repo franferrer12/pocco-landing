@@ -1,24 +1,37 @@
-# Pocco Club - Documentación Técnica
+# Grupo POCCO - Webs y Documentación
 
 ## 📋 Resumen
 
-Este directorio contiene toda la documentación técnica del sitio web **pocco.club**, incluyendo credenciales de acceso, cambios realizados, y procedimientos para mantener y actualizar el calendario de eventos.
+Este directorio contiene toda la documentación técnica y archivos de los sitios web del **Grupo POCCO**:
+- **pocco.club** - Web principal del club
+- **trendy.pocco.club** - Fiesta +16 "THE PARTY"
 
 ## 📁 Estructura del Directorio
 
 ```
 pocco-web/
 ├── README.md                          # Este archivo
-├── docs/
-│   ├── ACCESOS.md                     # Credenciales y accesos
-│   ├── CAMBIOS-REALIZADOS.md          # Historial de todos los cambios
-│   └── AGREGAR-EVENTOS.md             # Guía paso a paso para nuevos eventos
-├── scripts/
-│   ├── template-add-event.php         # Template para agregar eventos
-│   ├── template-modify-page.php       # Template para modificar página
-│   └── ejemplos/                      # Scripts de ejemplo usados
-└── backups/
-    └── README.md                      # Información sobre backups
+├── sites/                             # HTMLs de cada sitio
+│   ├── pocco/                         # POCCO Club
+│   │   └── index.html
+│   └── trendy/                        # TRENDY ✅ CREADA
+│       └── index.html                 # HTML con branding rosa/magenta
+├── assets/                            # Recursos visuales
+│   ├── pocco/                         # Logos e imágenes POCCO
+│   └── trendy/                        # Logos e imágenes TRENDY
+│       ├── logo-trendy.png
+│       ├── cartel-exams-break.png
+│       └── cartel-san-valentin.png
+├── docs/                              # Documentación
+│   ├── ACCESOS.md                     # Credenciales FTP/DB
+│   ├── CAMBIOS-REALIZADOS.md          # Historial POCCO
+│   ├── AGREGAR-EVENTOS.md             # Guía eventos POCCO
+│   ├── TROUBLESHOOTING.md             # Solución problemas
+│   └── TRENDY.md                      # Info proyecto TRENDY
+├── backups/                           # Backups de ambos sitios
+│   └── BACKUP_*.html
+└── scripts/                           # Scripts de automatización
+    └── ejemplos/
 ```
 
 ## 🎯 Página Principal de Eventos
@@ -34,11 +47,29 @@ Esta página contiene:
 - ✅ Sección de VIPs con 3 opciones (Tarima, Cabina, Supervip)
 - ✅ Optimización móvil con scroll automático al VIP recomendado
 
+## 🎨 TRENDY - The Party (+16)
+
+- **Estado**: HTML creado ✅ | Pendiente de despliegue ⏳
+- **URL destino**: https://trendy.pocco.club/
+- **Branding**: Rosa magenta (#E91E8C) - Estilo urbano/underground
+- **Documentación completa**: `docs/TRENDY.md`
+- **Assets**: Logo + carteles en `assets/trendy/`
+
+### Próximos pasos para TRENDY:
+1. Configurar el subdominio `trendy.pocco.club` en el panel de Hostinger
+2. Subir `sites/trendy/index.html` al servidor vía FTP
+3. Añadir eventos de TRENDY (San Valentín, etc.)
+
 ## 🚀 Quick Start
 
+### POCCO Club:
 1. **Ver credenciales de acceso**: Lee `docs/ACCESOS.md`
 2. **Agregar un nuevo evento**: Sigue `docs/AGREGAR-EVENTOS.md`
 3. **Ver qué se ha modificado**: Consulta `docs/CAMBIOS-REALIZADOS.md`
+
+### TRENDY:
+1. **Ver información del proyecto**: Lee `docs/TRENDY.md`
+2. **Ver assets de branding**: Carpeta `assets/trendy/`
 
 ## ⚠️ IMPORTANTE
 

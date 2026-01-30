@@ -636,12 +636,12 @@
             box-shadow: var(--shadow-4);
             transform: translateY(-4px);
         }
-        .vip-card.featu#E91E8C {
+        .vip-card.featured {
             border-color: var(--color-primary);
             border-width: 2px;
             box-shadow: 0 8px 32px rgba(var(--color-primary-rgb), 0.2);
         }
-        .vip-card.featu#E91E8C:hover {
+        .vip-card.featured:hover {
             box-shadow: 0 12px 40px rgba(var(--color-primary-rgb), 0.3);
         }
         .vip-card-badge {
@@ -993,7 +993,7 @@
     transform: translateY(-6px) scale(1.02) !important;
 }
 
-.vip-card.featu#E91E8C {
+.vip-card.featured {
     animation: subtle-pulse 3s ease-in-out infinite;
 }
 
@@ -1973,7 +1973,7 @@ ${1}1100px !important;
     transform: translateY(-6px) scale(1.02) !important;
 }
 
-.vip-card.featu#E91E8C {
+.vip-card.featured {
     animation: subtle-pulse 3s ease-in-out infinite;
 }
 
@@ -4051,7 +4051,7 @@ body.modal-open {
 <div class="vip-card-period">desde</div>
 </div>
 </article>
-<article class="vip-card featu#E91E8C">
+<article class="vip-card featured">
 <div class="vip-card-badge">Más popular</div>
 <div class="vip-card-header">
 <div class="vip-card-info">
@@ -5065,21 +5065,21 @@ body.modal-open {
 
     
 
-    // Centrar VIP featu#E91E8C en el scroll horizontal del contenedor
+    // Centrar VIP featured en el scroll horizontal del contenedor
     window.addEventListener('DOMContentLoaded', function() {
         if (window.innerWidth < 768) {
             // Esperar a que todo cargue
             setTimeout(function() {
                 var vipContainer = document.querySelector('.vip-cards');
-                var featu#E91E8CVip = document.querySelector('.vip-card.featu#E91E8C');
+                var featuredVip = document.querySelector('.vip-card.featured');
 
-                if (vipContainer && featu#E91E8CVip) {
-                    // Calcular posición para centrar la tarjeta featu#E91E8C
+                if (vipContainer && featuredVip) {
+                    // Calcular posición para centrar la tarjeta featured
                     var containerWidth = vipContainer.offsetWidth;
-                    var cardWidth = featu#E91E8CVip.offsetWidth;
-                    var cardOffsetLeft = featu#E91E8CVip.offsetLeft;
+                    var cardWidth = featuredVip.offsetWidth;
+                    var cardOffsetLeft = featuredVip.offsetLeft;
 
-                    // Centrar la tarjeta featu#E91E8C
+                    // Centrar la tarjeta featured
                     var scrollPosition = cardOffsetLeft - (containerWidth / 2) + (cardWidth / 2);
                     vipContainer.scrollLeft = scrollPosition;
                 }

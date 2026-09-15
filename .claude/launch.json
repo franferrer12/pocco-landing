@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pocco-next",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "sites/pocco"],
+      "port": 3000
+    },
+    {
+      "name": "trendy-legacy",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8001", "--directory", "sites/trendy"],
+      "port": 8001
+    }
+  ]
+}

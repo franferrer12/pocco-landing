@@ -1,0 +1,26 @@
+# Robots.txt para POCCO Club
+# https://pocco.club/
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://pocco.club/sitemap.xml
+
+# Bloquear archivos innecesarios para SEO
+Disallow: /cgi-bin/
+Disallow: /*.php$
+Disallow: /wp-admin/
+Disallow: /wp-includes/
+
+# Permitir indexación de imágenes
+User-agent: Googlebot-Image
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.png$
+Allow: /*.gif$
+Allow: /*.webp$
+
+# Crawl delay (opcional, solo si tienes problemas de carga)
+# User-agent: *
+# Crawl-delay: 10

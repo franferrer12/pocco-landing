@@ -2,6 +2,7 @@
 docs/ACCESOS.md
 .config-server.md
 DOCUMENTACION_PROYECTO.md
+RESUMEN_SESION_17FEB2026.md
 
 # Ignorar backups (son muy grandes)
 backups/*.html

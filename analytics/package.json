@@ -1,0 +1,21 @@
+{
+  "name": "pocco-analytics",
+  "version": "1.0.0",
+  "description": "Sistema de análisis de Google Analytics para POCCO Club",
+  "main": "pocco-analytics.js",
+  "scripts": {
+    "start": "node pocco-analytics.js",
+    "stats": "node pocco-analytics.js"
+  },
+  "keywords": [
+    "google-analytics",
+    "analytics",
+    "pocco",
+    "metrics"
+  ],
+  "author": "POCCO Club",
+  "license": "MIT",
+  "dependencies": {
+    "@google-analytics/data": "^4.1.0"
+  }
+}

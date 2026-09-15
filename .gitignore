@@ -1,5 +1,7 @@
 # Ignorar archivos sensibles
 docs/ACCESOS.md
+.config-server.md
+DOCUMENTACION_PROYECTO.md
 
 # Ignorar backups (son muy grandes)
 backups/*.html

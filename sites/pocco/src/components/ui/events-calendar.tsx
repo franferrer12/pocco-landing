@@ -1084,18 +1084,35 @@ function EventCheckoutEmbed({ url }: { url: string }) {
     container.appendChild(iframeContainer);
 
     // Watches for Fourvenues' own real <iframe> landing inside the
-    // container their script targets (by id, above) — that's the actual
-    // "done loading" signal, not just the <script> tag existing (which
-    // fires the moment it's appended, long before the widget has done
-    // anything). Once real markup shows up inside it, the spinner is no
-    // longer needed regardless of whether the iframe's own content has
-    // finished painting yet (like the featured-card flyer images
-    // elsewhere, "the iframe exists" is close enough to "visible" that
-    // waiting for more granular signals isn't worth the complexity).
+    // container their script targets (by id, above), then waits for THAT
+    // iframe's own `load` event — not just the <iframe> element existing,
+    // which fires the moment their script inserts an still-blank iframe
+    // node, well before its own document has painted anything. Switching
+    // the spinner off right when the empty node appeared (an earlier
+    // version of this) meant the modal visibly shrank down to the iframe's
+    // real (smaller, still blank) size for a beat before its content
+    // painted in — reported directly as "the popup shrinks, then FV
+    // appears", a jarring two-step reveal. Waiting for `load` instead means
+    // the spinner only goes away once there's actually something to see in
+    // its place.
     const loadObserver = new MutationObserver(() => {
-      if (iframeContainer.querySelector("iframe")) {
-        setLoaded(true);
+      const iframe = iframeContainer.querySelector("iframe");
+      if (iframe) {
         loadObserver.disconnect();
+        // The iframe's own document can already be done loading by the
+        // time this observer callback runs (e.g. if it resolved
+        // synchronously/from cache) — in that case `load` has already
+        // fired and never will again, so checking `readyState` first
+        // covers that instead of waiting forever for an event that already
+        // happened. `contentDocument` is same-origin here (Fourvenues'
+        // iframe, loaded via their own first-party script on this page),
+        // so this read doesn't throw the way a genuinely cross-origin
+        // iframe's would.
+        if (iframe.contentDocument?.readyState === "complete") {
+          setLoaded(true);
+        } else {
+          iframe.addEventListener("load", () => setLoaded(true), { once: true });
+        }
       }
     });
     loadObserver.observe(iframeContainer, { childList: true, subtree: true });

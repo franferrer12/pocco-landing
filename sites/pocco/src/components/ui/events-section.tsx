@@ -1,74 +1,48 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { BentoGrid, type BentoItem } from "./bento-grid";
 import ChromaVideo from "./chroma-video";
+import EventsCalendar from "./events-calendar";
 
 /**
- * Próximos Eventos — embeds Fourvenues' own event-list widget (the ticketing
- * provider POCCO is migrating to; Fourvenues also offers a separate calendar
- * widget, not used here) rather than a hand-built event list: the widget owns
- * the event data, availability and checkout, so this section is just the
- * dark/red-branded frame around it.
- *
- * The <script> is inserted manually into this exact DOM position via a ref,
- * NOT via next/script — Next.js's Script component relocates scripts to
- * the end of <body> regardless of where it sits in JSX, and third-party
- * widgets like this one commonly use `document.currentScript` to find their
- * own <script> tag and mount right there (the same trick document.write()
- * relies on). Moving the tag breaks that.
- *
- * Fourvenues' widget appears to validate the embedding origin and refuses to
- * mount on localhost (confirmed: the script loads with no console error, but
- * never populates the container) — it will only render for real once this is
- * live on pocco.club. To keep working on the section's design locally without
- * that dependency, a placeholder card layout renders as a fallback whenever
- * the real widget hasn't populated the container after a short grace period.
+ * Próximos Eventos — month-by-month calendar fed by our own Fourvenues
+ * integration (see events-calendar.tsx and /api/events). Previously embedded
+ * Fourvenues' own iframe widget directly; replaced so the section can show a
+ * real calendar grid (min age, dress code, per-day event list) instead of
+ * just Fourvenues' own list/detail views.
  */
 export default function EventsSection() {
-  const mountRef = useRef<HTMLDivElement>(null);
-  const [widgetMounted, setWidgetMounted] = useState(false);
-  const [showFallback, setShowFallback] = useState(false);
-
-  useEffect(() => {
-    const mount = mountRef.current;
-    if (!mount) return;
-    const script = document.createElement("script");
-    script.src = "https://www.fourvenues.com/assets/iframe/pocco-club/events";
-    mount.appendChild(script);
-
-    // Fourvenues' widget injects real content (an iframe, typically) into this
-    // container once it mounts — if nothing shows up beyond our own <script>
-    // tag within a few seconds, assume it was rejected (e.g. localhost origin)
-    // and fall back to the placeholder instead of leaving an empty section.
-    const checkInterval = setInterval(() => {
-      if (mount.children.length > 1) {
-        setWidgetMounted(true);
-        clearInterval(checkInterval);
-      }
-    }, 300);
-    const fallbackTimeout = setTimeout(() => {
-      if (mount.children.length <= 1) setShowFallback(true);
-      clearInterval(checkInterval);
-    }, 3000);
-
-    return () => {
-      clearInterval(checkInterval);
-      clearTimeout(fallbackTimeout);
-      mount.innerHTML = "";
-    };
-  }, []);
-
   return (
     <section
       id="eventos"
+      className="events-section"
       style={{
         position: "relative",
-        padding: "18vh 6vw 12vh",
+        padding: "1vh 6vw 6vh",
         background: "#000",
       }}
     >
       <style>{`
+        /* Top padding is small now that BrandsMarquee (with its own
+           padding) sits directly above this section and already clears the
+           fixed nav pill — this section no longer needs to reserve that
+           space itself. On a narrow phone the title's clamp()-based
+           font-size still runs larger relative to the viewport, so it gets
+           a little more breathing room than desktop, just not the old
+           nav-clearing amount. */
+        @media (max-width: 640px) {
+          .events-section {
+            padding-top: 2vh !important;
+          }
+          /* Stays anchored at the exact same corner (right:0, bottom:0 of
+             the title's own wrapper) as desktop — only the size scales, up
+             from the 14vw-of-viewport rule (tiny on a narrow phone) to
+             22vw-of-viewport, still capped at the same 120px desktop uses so
+             it never overshoots the original design's size, just closes the
+             gap on small screens. */
+          .events-logo-mark {
+            width: min(22vw, 120px) !important;
+          }
+        }
         @keyframes events-logo-spin {
           0% { transform: rotateY(0deg); }
           100% { transform: rotateY(360deg); }
@@ -88,7 +62,7 @@ export default function EventsSection() {
             fontWeight: 800,
             letterSpacing: "0.35em",
             textTransform: "uppercase",
-            color: "#c73a3f",
+            color: "#e21212",
             marginBottom: "1.2rem",
           }}
         >
@@ -113,6 +87,7 @@ export default function EventsSection() {
         {/* Same 3D isotype as the hero, spun continuously — anchored to the
             same right edge the ticker's rule lines below end at. */}
         <div
+          className="events-logo-mark"
           style={{
             position: "absolute",
             right: 0,
@@ -131,21 +106,7 @@ export default function EventsSection() {
 
       <EventsTicker />
 
-      {/* Fourvenues mounts its widget directly into whichever element holds
-          its own <script> tag, so the ref-inserted script must live inside
-          this same container rather than as a sibling. Hidden (not removed)
-          once the fallback shows, so the widget can still take over the
-          moment it actually mounts (e.g. after a later origin check). */}
-      <div
-        ref={mountRef}
-        style={{
-          maxWidth: 1100,
-          margin: "0 auto",
-          display: showFallback && !widgetMounted ? "none" : "block",
-        }}
-      />
-
-      {showFallback && !widgetMounted && <EventsPlaceholder />}
+      <EventsCalendar />
     </section>
   );
 }
@@ -200,7 +161,7 @@ function EventsTicker() {
               fontWeight: 700,
               fontSize: "0.95rem",
               letterSpacing: "0.25em",
-              color: i % words.length === 0 ? "#c73a3f" : "rgba(245,245,245,0.5)",
+              color: i % words.length === 0 ? "#e21212" : "rgba(245,245,245,0.5)",
               whiteSpace: "nowrap",
               padding: "0 1.5rem",
             }}
@@ -208,74 +169,6 @@ function EventsTicker() {
             {w} <span style={{ opacity: 0.35 }}>·</span>
           </span>
         ))}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Local-dev-only stand-in for the Fourvenues widget (see above) — a bento-style
- * grid (2 cards on top, 3 below, matching the layout the user referenced from
- * 21st.dev's "Bento" component) in the same dark/red visual language as the
- * rest of the hero, purely so the section's layout/spacing can be designed and
- * reviewed without a live pocco.club deployment. Swapped out automatically by
- * the real widget wherever it can actually mount.
- */
-function EventsPlaceholder() {
-  const placeholderEvents: BentoItem[] = [
-    {
-      tag: "Viernes",
-      title: "Noche Pocco",
-      description: "La previa se queda corta. Aquí empieza lo bueno.",
-      image: "/assets/hero-main.jpg",
-      imagePosition: "20% 30%",
-    },
-    {
-      tag: "Sábado",
-      title: "Fin de semana sin frenos",
-      description: "DJ en cabina, gente que sí sabe salir. Sin excusas.",
-      image: "/assets/hero-main.jpg",
-      imagePosition: "80% 60%",
-    },
-    {
-      tag: "Especial",
-      title: "Guest DJ",
-      description: "Line-up sorpresa, solo para los que llegan pronto.",
-      image: "/assets/hero-main.jpg",
-      imagePosition: "50% 10%",
-    },
-    {
-      tag: "Reservas",
-      title: "Mesas VIP",
-      description: "Tu grupo, tu espacio, tu noche.",
-      image: "/assets/hero-main.jpg",
-      imagePosition: "10% 80%",
-    },
-    {
-      tag: "Todas las noches",
-      title: "La resaca vale la pena",
-      description: "Aquí no se viene a dormir.",
-      image: "/assets/hero-main.jpg",
-      imagePosition: "90% 40%",
-    },
-  ];
-
-  return (
-    <div>
-      <p
-        style={{
-          textAlign: "center",
-          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-          fontSize: "0.75rem",
-          letterSpacing: "0.15em",
-          color: "rgba(245,245,245,0.35)",
-          marginBottom: "3vh",
-        }}
-      >
-        VISTA PREVIA LOCAL — el listado real de Fourvenues se carga en pocco.club
-      </p>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <BentoGrid items={placeholderEvents} />
       </div>
     </div>
   );

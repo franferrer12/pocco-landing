@@ -75,7 +75,16 @@ export default function ChromaVideo({
 
     function draw() {
       if (cancelled || !video || !canvas || !ctx) return;
-      if (video.readyState >= 2) {
+      // `video.seeking` guards the loop restart: when a looping <video>
+      // wraps back to time 0, the browser briefly reports readyState>=2
+      // again before the seek to the start has actually settled — drawing
+      // during that window can capture a stale/blank decoder frame, which
+      // (having no video content) reads as fully opaque white once fed
+      // through the same chroma-key loop below (luma high everywhere,
+      // alpha untouched), showing up as a hard white rectangle right at the
+      // loop seam. Skipping the draw for that one frame and reusing
+      // whatever's already on the canvas is invisible at 60fps.
+      if (video.readyState >= 2 && !video.seeking) {
         resize();
         if (canvas.width && canvas.height) {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);

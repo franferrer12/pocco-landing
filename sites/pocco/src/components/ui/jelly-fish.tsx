@@ -4,18 +4,19 @@
 // weights 500/600/900). Load it in your project for an exact match; without it the
 // headline falls back to Helvetica Neue / Arial Black and the UI to a system sans.
 //
-// Dependencies: the jellyfish is a real procedural 3D creature (a shaded bell +
-// shader-driven tentacles), so this scene uses react-three-fiber + three. Install
-// them first:   npm i three @react-three/fiber
 // Everything else is inline — all @keyframes live in the one injected <style>
 // block, there are no Tailwind classes, and there are no image files to ship.
+//
+// The hero originally rendered a procedural 3D jellyfish (react-three-fiber +
+// custom GLSL shaders) behind the word ring; it was replaced by the ChromaVideo
+// logo mark and the three/@react-three/fiber code removed — that dependency
+// alone was ~1MB of the client JS bundle for a component that was never
+// actually rendered.
 
 import type { CSSProperties } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
+import Image from "next/image";
 import ChromaVideo from "./chroma-video";
-import { PillNav } from "./pill-nav";
-import * as THREE from "three";
 
 const SANS = "'Inter', 'Helvetica Neue', Arial, system-ui, sans-serif";
 const DISPLAY = "'Inter', 'Helvetica Neue', 'Arial Black', sans-serif";
@@ -57,359 +58,11 @@ const MANIFESTO =
    the "lab instrument" feel of the reference. */
 const TICK_LABELS = ["UX", "3D", "FX", "AI"];
 
-/* ═══════════════════════ The procedural 3D jellyfish ═══════════════════════
-   A jellyfish recreated ENTIRELY IN CODE (react-three-fiber + custom GLSL) — no
-   footage, no model file, no textures. The bell is a shaded dome with radial ribs,
-   a mottled/speckled margin, an iridescent fresnel rim and an inner bioluminescent
-   glow; long tentacles and frilly oral arms undulate via a vertex-shader traveling
-   wave. Front-facing (gentle bob + pulse + sway); the canvas is transparent so the
-   orbiting words show through behind. ───────────────────────────────────────── */
-
-/* One shared time value drives every shader so the whole creature stays in sync. */
-function useTime() {
-  const t = useRef({ value: 0 });
-  useFrame((s) => (t.current.value = s.clock.elapsedTime));
-  return t.current;
-}
-
-/* ── The bell ───────────────────────────────────────────────────────────────── */
-const BELL_VERT = /* glsl */ `
-  varying vec3 vPos; varying vec3 vNormal; varying vec3 vView;
-  void main(){
-    vPos = position;
-    vNormal = normalize(normalMatrix * normal);
-    vec4 mv = modelViewMatrix * vec4(position,1.0);
-    vView = -mv.xyz;
-    gl_Position = projectionMatrix * mv;
-  }
-`;
-const BELL_FRAG = /* glsl */ `
-  precision highp float;
-  uniform float uTime;
-  varying vec3 vPos; varying vec3 vNormal; varying vec3 vView;
-
-  float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
-  float noise(vec2 p){
-    vec2 i=floor(p), f=fract(p);
-    float a=hash(i), b=hash(i+vec2(1.,0.)), c=hash(i+vec2(0.,1.)), d=hash(i+vec2(1.,1.));
-    vec2 u=f*f*(3.-2.*f);
-    return mix(mix(a,b,u.x),mix(c,d,u.x),u.y);
-  }
-
-  void main(){
-    vec3 N = normalize(vNormal);
-    vec3 V = normalize(vView);
-    float fres = pow(1.0 - max(dot(N,V),0.0), 2.4);
-
-    float h = clamp((vPos.y + 0.40)/1.40, 0.0, 1.0);  // 1 apex → 0 margin
-    float ang = atan(vPos.z, vPos.x);                 // -pi..pi
-
-    // vertical colour gradient: magenta apex → pink → lilac margin
-    vec3 top  = vec3(0.72, 0.26, 0.60);
-    vec3 mid  = vec3(0.85, 0.42, 0.78);
-    vec3 edge = vec3(0.74, 0.60, 0.93);
-    vec3 col = mix(edge, mid, smoothstep(0.0,0.5,h));
-    col = mix(col, top, smoothstep(0.45,1.0,h));
-
-    // radial ribs (meridians) — fade out at apex and margin
-    float ribs = abs(fract(ang/(2.0*3.14159265)*18.0) - 0.5) * 2.0;
-    float ribLine = smoothstep(0.80, 0.99, ribs);
-    float ribMask = smoothstep(0.98,0.55,h) * smoothstep(-0.02,0.22,h);
-    col *= 1.0 - ribLine * 0.55 * ribMask;
-
-    // The inward-facing back wall is also drawn (DoubleSide). Left alone its dark
-    // margin mottling punches a hard, wobbling shadow band through the translucent
-    // dome — so on back faces we drop the mottling and fade the wall right down, and
-    // it reads as a faint translucent hint instead of an unstable shadow.
-    float backw = gl_FrontFacing ? 1.0 : 0.0;
-
-    // mottled / speckled dark band around the margin
-    float band = smoothstep(0.34, 0.02, h);
-    float spots = noise(vec2(ang*7.0, h*12.0));
-    float wart = smoothstep(0.58, 0.86, spots) * band;
-    col = mix(col, vec3(0.30,0.10,0.18), wart*0.85*backw);
-
-    // iridescent rim + inner glow
-    col += fres * vec3(0.26, 0.18, 0.48);
-    col += (1.0 - fres) * vec3(0.20,0.05,0.15) * (0.5 + 0.5*h);
-
-    float alpha = 0.50 + fres*0.45 + ribLine*ribMask*0.22 + wart*0.35*backw;
-    alpha *= mix(0.30, 1.0, backw);
-    alpha = clamp(alpha, 0.0, 0.96);
-    gl_FragColor = vec4(col, alpha);
-  }
-`;
-
-function Bell({ time }: { time: { value: number } }) {
-  const mat = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        vertexShader: BELL_VERT,
-        fragmentShader: BELL_FRAG,
-        uniforms: { uTime: time },
-        transparent: true,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-      }),
-    [time]
-  );
-  return (
-    <mesh material={mat} scale={[1, 0.84, 1]}>
-      <sphereGeometry args={[1, 160, 160, 0, Math.PI * 2, 0, 1.98]} />
-    </mesh>
-  );
-}
-
-/* Inner bioluminescent core — additive glow that reads through the translucent bell. */
-function Glow() {
-  return (
-    <mesh position={[0, 0.18, 0]}>
-      <sphereGeometry args={[0.5, 32, 32]} />
-      <meshBasicMaterial
-        color={"#ff6fbf"}
-        transparent
-        opacity={0.5}
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-        toneMapped={false}
-      />
-    </mesh>
-  );
-}
-
-/* ── Undulating strands (tentacles + oral arms) ─────────────────────────────── */
-const STRAND_VERT = /* glsl */ `
-  uniform float uTime; uniform float uLen; uniform float uPhase; uniform float uAmp; uniform float uFreq;
-  varying float vK; varying vec3 vNormal; varying vec3 vView; varying float vWorldY;
-  void main(){
-    vec3 p = position;
-    float k = clamp(-p.y / uLen, 0.0, 1.0);   // 0 at top, 1 at drifting tip
-    float amp = k*k*uAmp;
-    p.x += sin(uTime*1.5 + k*uFreq + uPhase) * amp;
-    p.z += cos(uTime*1.2 + k*uFreq*0.9 + uPhase*1.3) * amp;
-    vK = k;
-    vWorldY = (modelMatrix * vec4(p,1.0)).y;     // height in the scene, for the dissolve
-    vNormal = normalize(normalMatrix * normal);
-    vec4 mv = modelViewMatrix * vec4(p,1.0);
-    vView = -mv.xyz;
-    gl_Position = projectionMatrix * mv;
-  }
-`;
-const STRAND_FRAG = /* glsl */ `
-  precision highp float;
-  uniform vec3 uTop; uniform vec3 uTip; uniform float uOpacity; uniform vec2 uFade; uniform vec2 uFadeTop;
-  varying float vK; varying vec3 vNormal; varying vec3 vView; varying float vWorldY;
-  void main(){
-    float fres = pow(1.0 - max(dot(normalize(vNormal), normalize(vView)),0.0), 1.6);
-    // Dissolve to nothing as the strand drops below the frame, so it trails off into
-    // wispy tips instead of being clipped flat at the bottom edge. (uFade.x = lower /
-    // fully gone, uFade.y = upper / still solid.)
-    // A matching dissolve at the TOP hides each strand's attachment up inside the
-    // bell, so they appear to emerge from within it rather than join at a hard, flat
-    // ring under the dome. (uFadeTop.x = lower / fully solid, .y = upper / gone.)
-    float vis = smoothstep(uFade.x, uFade.y, vWorldY)
-              * smoothstep(uFadeTop.y, uFadeTop.x, vWorldY);
-    vec3 col = mix(uTop, uTip, vK) + fres*0.25;
-    float alpha = ((1.0 - vK*0.92) * uOpacity + fres*0.12) * vis;
-    gl_FragColor = vec4(col, clamp(alpha,0.0,1.0));
-  }
-`;
-
-function strandGeometry(length: number, thickness: number, curl: number) {
-  const seg = 40;
-  const radial = 6;
-  const spine: THREE.Vector3[] = [];
-  for (let i = 0; i <= seg; i++) {
-    const t = i / seg;
-    spine.push(new THREE.Vector3(Math.sin(t * 3) * curl * t, -t * length, Math.cos(t * 2) * curl * t));
-  }
-  const curve = new THREE.CatmullRomCurve3(spine);
-  const frames = curve.computeFrenetFrames(seg, false);
-  const pos: number[] = [];
-  const idx: number[] = [];
-  for (let i = 0; i <= seg; i++) {
-    const t = i / seg;
-    const p = curve.getPointAt(t);
-    const r = thickness * (1 - Math.pow(t, 0.75));
-    const Nf = frames.normals[i];
-    const Bf = frames.binormals[i];
-    for (let j = 0; j <= radial; j++) {
-      const a = (j / radial) * Math.PI * 2;
-      const c = Math.cos(a);
-      const s = Math.sin(a);
-      pos.push(
-        p.x + (c * Nf.x + s * Bf.x) * r,
-        p.y + (c * Nf.y + s * Bf.y) * r,
-        p.z + (c * Nf.z + s * Bf.z) * r
-      );
-    }
-  }
-  for (let i = 0; i < seg; i++)
-    for (let j = 0; j < radial; j++) {
-      const a = i * (radial + 1) + j;
-      const b = a + radial + 1;
-      idx.push(a, b, a + 1, b, b + 1, a + 1);
-    }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  g.setIndex(idx);
-  g.computeVertexNormals();
-  return g;
-}
-
-function Strand({
-  time,
-  angle,
-  radius,
-  yOffset,
-  length,
-  thickness,
-  curl,
-  amp,
-  freq,
-  phase,
-  top,
-  tip,
-  opacity,
-}: {
-  time: { value: number };
-  angle: number;
-  radius: number;
-  yOffset: number;
-  length: number;
-  thickness: number;
-  curl: number;
-  amp: number;
-  freq: number;
-  phase: number;
-  top: string;
-  tip: string;
-  opacity: number;
-}) {
-  const geometry = useMemo(() => strandGeometry(length, thickness, curl), [length, thickness, curl]);
-  const mat = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        vertexShader: STRAND_VERT,
-        fragmentShader: STRAND_FRAG,
-        uniforms: {
-          uTime: time,
-          uLen: { value: length },
-          uPhase: { value: phase },
-          uAmp: { value: amp },
-          uFreq: { value: freq },
-          uTop: { value: new THREE.Color(top) },
-          uTip: { value: new THREE.Color(tip) },
-          uOpacity: { value: opacity },
-          // Dissolve window (world Y): solid above .y, fully gone below .x.
-          uFade: { value: new THREE.Vector2(-1.85, -0.7) },
-          // Top dissolve (world Y): solid at/below .x, fully hidden at/above .y — so
-          // the attachment is tucked up under the bell rim (~ -0.34).
-          uFadeTop: { value: new THREE.Vector2(-0.62, -0.22) },
-        },
-        transparent: true,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-      }),
-    [time, length, phase, amp, freq, top, tip, opacity]
-  );
-  const x = Math.cos(angle) * radius;
-  const z = Math.sin(angle) * radius;
-  return <mesh geometry={geometry} material={mat} position={[x, yOffset, z]} />;
-}
-
-/* The whole creature. It stays put in the centre; the only big motion is a steady
-   turn locked to the word-ring's LOOP, which reads as the CAMERA orbiting the whole
-   scene (the words form as we come round, and we see every side of the bell too). A
-   faint pulse + bob keep it alive in place. */
-function Jelly({ loop }: { loop: number }) {
-  const time = useTime();
-  const grp = useRef<THREE.Group>(null!);
-  useFrame((s) => {
-    const t = s.clock.elapsedTime;
-    // One revolution per LOOP, same direction as the CSS word orbit (rotateY 0 → -360).
-    grp.current.rotation.y = -(t / loop) * Math.PI * 2;
-    grp.current.position.y = Math.sin(t * 0.6) * 0.08;
-    const k = Math.sin(t * 1.7);
-    grp.current.scale.set(1 + k * 0.05, 1 - k * 0.06, 1 + k * 0.05);
-  });
-
-  const tentacles = useMemo(
-    () => Array.from({ length: 28 }, (_, i) => ({ angle: (i / 28) * Math.PI * 2, phase: i * 0.5 })),
-    []
-  );
-  const arms = useMemo(
-    () => Array.from({ length: 8 }, (_, i) => ({ angle: (i / 8) * Math.PI * 2, phase: i * 1.0 + 0.4 })),
-    []
-  );
-
-  return (
-    <group ref={grp}>
-      <Bell time={time} />
-      <Glow />
-      {/* Long, thin marginal tentacles */}
-      {tentacles.map((s, i) => (
-        <Strand
-          key={`t${i}`}
-          time={time}
-          angle={s.angle}
-          radius={0.82}
-          yOffset={-0.25}
-          length={4.2}
-          thickness={0.016}
-          curl={0.05}
-          amp={0.5}
-          freq={7.0}
-          phase={s.phase}
-          top={"#e9b6e6"}
-          tip={"#f3d9f0"}
-          opacity={0.55}
-        />
-      ))}
-      {/* Frilly, fuller oral arms clustered under the centre */}
-      {arms.map((s, i) => (
-        <Strand
-          key={`a${i}`}
-          time={time}
-          angle={s.angle}
-          radius={0.22}
-          yOffset={-0.1}
-          length={2.0}
-          thickness={0.07}
-          curl={0.14}
-          amp={0.32}
-          freq={10.0}
-          phase={s.phase}
-          top={"#f7d6ef"}
-          tip={"#e79fd8"}
-          opacity={0.72}
-        />
-      ))}
-    </group>
-  );
-}
-
-/* The transparent 3D canvas holding the jellyfish. Exported so it can be dropped in
-   on its own too; the hero below renders it at the hub of the word-ring. */
-export function Jellyfish3D({ loop = 20 }: { loop?: number }) {
-  return (
-    <Canvas
-      flat
-      gl={{ alpha: true, antialias: true }}
-      dpr={[1, 2]}
-      camera={{ position: [0, 0.4, 6], fov: 34 }}
-      style={{ width: "100%", height: "100%", background: "transparent" }}
-    >
-      <ambientLight intensity={1} />
-      <Jelly loop={loop} />
-    </Canvas>
-  );
-}
-
 function SideRuler({ side }: { side: "left" | "right" }) {
   return (
     <div
       aria-hidden
+      className="jelly-side-ruler"
       style={{
         position: "absolute",
         [side]: "1.4vh",
@@ -490,14 +143,31 @@ export default function JellyfishDrift() {
           style={{
             position: "absolute",
             inset: "-5%",
-            backgroundImage: "url('/assets/hero-main.jpg')",
-            backgroundSize: "170% auto",
-            backgroundPosition: "85% center",
-            backgroundRepeat: "no-repeat",
             filter: "blur(8px)",
             transform: "scale(1.06)",
           }}
-        />
+        >
+          {/* next/image instead of a plain background-image url() — the source
+              file is 2400×1600 (748KB) but only ever shown blurred behind the
+              hero at viewport width, so it never needs to be served at full
+              resolution/JPEG. next/image's built-in optimizer resizes and
+              re-encodes it (AVIF/WebP with JPEG fallback) per requesting
+              device, which a raw CSS url() bypasses entirely. fill +
+              object-fit/object-position reproduce the same 170%
+              zoom/85%-center crop the background-size/-position pair gave. */}
+          <Image
+            src="/assets/hero-main.jpg"
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            style={{
+              objectFit: "cover",
+              objectPosition: "85% center",
+              transform: "scale(1.7)",
+            }}
+          />
+        </div>
         <div
           style={{
             position: "absolute",
@@ -522,39 +192,6 @@ export default function JellyfishDrift() {
           }}
         />
       </div>
-
-      {/* ── Top nav ───────────────────────────────────────────────────────── */}
-      <header
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 40,
-          display: "flex",
-          alignItems: "center",
-          padding: "2.4vh 2.6vw",
-          // Pins the header to the same overall height/vertical position it had
-          // with the 5vh-tall logo mark still in it — without this, the header
-          // shrinks to fit just the (shorter) pill nav and the whole bar sits
-          // higher/tighter against the top edge than before.
-          minHeight: "calc(5vh + 4.8vh)",
-          color: "#f5f5f5",
-        }}
-      >
-        {/* Absolutely centred on the full header width — the nav is the only
-            content in the header now that the top-left video logo mark has
-            been removed. */}
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            transform: "translateX(-50%)",
-          }}
-        >
-          <PillNav />
-        </div>
-      </header>
 
       {/* ── Giant headline — a horizontal TICKER. Each word starts off-screen right,
             slides straight across through the centre (passing behind the jellyfish,
@@ -591,7 +228,17 @@ export default function JellyfishDrift() {
               // pair instead (see jelly-ticker-${i} generation).
               fontFamily: DISPLAY,
               fontWeight: 900,
-              fontSize: "28vh",
+              // 28vh alone assumed a wide desktop viewport — on a narrow tall
+              // phone (small vw, large vh) it blew up to single letters
+              // wider than the screen. clamp() caps it by vw too, so it
+              // scales down on narrow viewports instead of only tracking
+              // height. 46vw (was 38vw, 24vw, 20vw) makes the mobile-sized
+              // text much bigger/bolder behind the logo, while
+              // whiteSpace:"nowrap" still guarantees it never wraps — a word
+              // just runs off both edges further before crossing, same as
+              // before. Desktop is unaffected since 28vh stays the winning
+              // (smaller) value on wide-short viewports.
+              fontSize: "clamp(3.5rem, 46vw, 28vh)",
               lineHeight: 1,
               letterSpacing: "-0.05em",
               whiteSpace: "nowrap",
@@ -630,6 +277,7 @@ export default function JellyfishDrift() {
             silently ignore blend modes on the element, leaving its solid black
             background visible as an opaque box instead of blending away. ─────── */}
       <div
+        className="jelly-logo-mark"
         style={{
           position: "absolute",
           left: "50%",
@@ -643,6 +291,16 @@ export default function JellyfishDrift() {
           // by width alone — ChromaVideo's canvas has no independent aspect control
           // of its own, so the container must already be the right shape or the
           // logo stretches to fill it.
+          //
+          // 108vw was tuned for landscape-ish desktop viewports (108% of a WIDE
+          // viewport is still smaller than 120vh there, so vh wins and the logo
+          // stays huge relative to the frame). On a narrow tall phone the same
+          // 108vw is much less generous relative to the ticker text behind it
+          // (which scales more by vw too — see the ticker's own clamp()), so the
+          // logo visibly lost its former dominance over the word ring. A mobile
+          // override raises the vw multiplier so vh keeps winning down to
+          // narrower screens too, preserving the same "logo as the dominant
+          // shape, text sweeping behind it" balance desktop has.
           marginLeft: "calc(min(120vh, 108vw) / -2)",
           marginTop: "calc(min(120vh, 108vw) * 9 / 16 / -2)",
           width: "min(120vh, 108vw)",
@@ -662,6 +320,7 @@ export default function JellyfishDrift() {
             sequence restarts. Nearly static (a whisper of slide) so it reads as a
             quiet editorial statement against the kinetic headline. ───────────── */}
       <div
+        className="jelly-manifesto-block"
         style={{
           position: "absolute",
           right: "4vw",
@@ -703,7 +362,15 @@ export default function JellyfishDrift() {
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 40,
-          width: "60vw",
+          // 60vw measured the same ~8-9px font size on both a wide desktop
+          // and a narrow phone viewport (this hero's vh is similar on both,
+          // so nothing here was actually scaling with the device) — legible
+          // enough on a full monitor, but under 10px is too small to read
+          // comfortably on an actual phone screen held at arm's length.
+          // min(60vw, 520px) keeps it from stretching edge-to-edge on a
+          // narrow phone (which would force the sentence onto many cramped
+          // lines instead of the intended 1-2).
+          width: "min(60vw, 520px)",
           textAlign: "center",
           height: "3.4vh",
         }}
@@ -720,7 +387,12 @@ export default function JellyfishDrift() {
               left: 0,
               right: 0,
               margin: 0,
-              fontSize: "1.15vh",
+              // 1.15vh alone measured ~9px on both a wide desktop and a
+              // narrow phone viewport — comfortable on a monitor, too small
+              // to read on an actual phone. 11px floor keeps it readable
+              // without changing the desktop size (1.15vh already clears
+              // 11px there).
+              fontSize: "clamp(11px, 1.15vh, 20px)",
               fontWeight: 700,
               letterSpacing: "0.16em",
               lineHeight: 1.5,
@@ -820,6 +492,21 @@ const JELLY_TICKER_KEYFRAMES = PHRASES.map((_, i) => {
   ${slotStart.toFixed(3)}%{transform:translateX(110vw) translateY(-5vh)}
   ${slotEnd}%{transform:translateX(-110vw) translateY(-5vh)}
   100%{transform:translateX(-110vw) translateY(-5vh)}
+}
+/* On a narrow phone the font-size clamp is driven by vw (46vw), so a word like
+   "F*CKING" renders many vw units wide in nowrap — far wider than the 110vw
+   travel above, which was sized for the vh-driven desktop font-size. With that
+   short a travel the word's visible glyphs never fully clear the viewport
+   before reversing course, reading as "stuck" mid-cross instead of sweeping
+   through. Widening the travel to 320vw only under this breakpoint gives the
+   much wider mobile text room to actually enter and exit. */
+@media (max-width: 640px){
+  @keyframes jelly-ticker-${i}{
+    0%{transform:translateX(320vw) translateY(-5vh)}
+    ${slotStart.toFixed(3)}%{transform:translateX(320vw) translateY(-5vh)}
+    ${slotEnd}%{transform:translateX(-320vw) translateY(-5vh)}
+    100%{transform:translateX(-320vw) translateY(-5vh)}
+  }
 }`;
 }).join("\n");
 const JELLY_CSS = `
@@ -844,6 +531,53 @@ ${JELLY_TICKER_KEYFRAMES}
 @keyframes jelly-scroll-cue{
   0%,100%{ transform: translateX(-50%) translateY(0); }
   50%{ transform: translateX(-50%) translateY(5px); }
+}
+
+/* Both of these were sized as a percentage of viewport WIDTH (22vw for the
+   manifesto's own box, 1.4vh of edge padding for the rulers) — fine on a wide
+   desktop viewport, but on a narrow phone (large vh, small vw) the manifesto's
+   box shrinks to a sliver that wraps its sentence into a dozen cramped lines
+   sitting directly on top of the now much-larger ticker type (also fixed
+   separately, but the two were still visually competing for the same
+   limited width), and the side rulers' short vertical tick marks end up
+   overlapping the ticker's letters instead of framing them. Both are purely
+   decorative "lab instrument" flourishes, not load-bearing content, so the
+   simplest fix that doesn't fight the vh/vw-based layout further is to hide
+   them below the viewport width where they'd otherwise collide.  */
+@media (max-width: 640px){
+  /* !important is required here: both elements set display inline via
+     React's style={} prop (the ruler uses display:"flex"), and an inline
+     style always wins over a plain class rule regardless of selector
+     specificity or source order — without it this rule was silently losing
+     and the rulers stayed visible below 640px. */
+  .jelly-manifesto-block, .jelly-side-ruler{
+    display: none !important;
+  }
+  /* Raises the vw side of the min(120vh, Xvw) pair so vh keeps winning on
+     narrow screens too — restores the logo's dominant size relative to the
+     ticker text behind it, matching the desktop balance instead of shrinking
+     to a fraction of the frame the word ring now fills. */
+  .jelly-logo-mark{
+    width: min(120vh, 220vw) !important;
+    margin-left: calc(min(120vh, 220vw) / -2) !important;
+    margin-top: calc(min(120vh, 220vw) * 9 / 16 / -2) !important;
+  }
+}
+
+/* The fix above still isn't enough on a SHORT viewport (landscape phone, or
+   just a squat browser window). Measured directly: raising the vw side
+   (220vw → 320vw) did nothing there, because on a short viewport 120vh is
+   the SMALLER of the two and is what min() picks either way — the vw side
+   was never the constraint in that case, so pushing it further was a no-op.
+   The lever that actually matters when vh is small is vh's own multiplier.
+   min-aspect-ratio catches "wide relative to its own height" viewports
+   (landscape phones included) regardless of raw width. */
+@media (max-height: 500px) and (min-aspect-ratio: 3/2){
+  .jelly-logo-mark{
+    width: min(220vh, 108vw) !important;
+    margin-left: calc(min(220vh, 108vw) / -2) !important;
+    margin-top: calc(min(220vh, 108vw) * 9 / 16 / -2) !important;
+  }
 }
 
 /* Accessibility: hold a calm, near-static frame for reduced-motion users. Freeze the

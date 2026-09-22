@@ -298,6 +298,16 @@ export default function GallerySection() {
             display: "flex",
             alignItems: "flex-start",
             overflow: "hidden",
+            // Promotes this sticky box to its own GPU compositing layer.
+            // Without it, mobile Safari re-evaluates the sticky element's
+            // position on the main thread as part of the same work driving
+            // its own address-bar collapse/expand during the touch
+            // gesture — the two fighting over the same frame is what read
+            // as the scroll "catching"/snagging rather than following the
+            // finger smoothly. translateZ(0) forces its own layer so the
+            // browser can composite it independently instead.
+            transform: "translateZ(0)",
+            WebkitTransform: "translateZ(0)",
           }}
           className="gallery-sticky"
         >

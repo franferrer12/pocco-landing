@@ -201,8 +201,24 @@ export default function GallerySection() {
   useEffect(() => {
     const updateViewportHeight = () => setViewportHeight(window.innerHeight);
     updateViewportHeight();
-    window.addEventListener("resize", updateViewportHeight);
-    return () => window.removeEventListener("resize", updateViewportHeight);
+    // Debounced rather than reacting to every resize event directly: mobile
+    // Safari's address bar collapsing/expanding while the user scrolls
+    // fires resize repeatedly mid-gesture, and each one was re-rendering
+    // this whole section (including the parallax columns' transforms) right
+    // in the middle of the touch — part of what read as the columns
+    // stuttering/jumping ahead of the finger. A real device rotation or
+    // window resize still lands well within 150ms of settling, so this
+    // doesn't lose any genuine resize.
+    let timeoutId: number | undefined;
+    const onResize = () => {
+      window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(updateViewportHeight, 150);
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.clearTimeout(timeoutId);
+    };
   }, []);
 
   return (

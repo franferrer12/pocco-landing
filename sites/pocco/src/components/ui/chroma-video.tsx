@@ -105,6 +105,49 @@ export default function ChromaVideo({
     window.addEventListener("touchstart", onFirstInteraction, { once: true, passive: true });
     window.addEventListener("pointerdown", onFirstInteraction, { once: true });
 
+    // Belt-and-suspenders watchdog for instances that mount inside a heavy
+    // first paint (the hero, jelly-fish.tsx: a 2400px priority background
+    // image + several CSS keyframe animations all starting at the same
+    // moment) — confirmed by direct comparison: the SAME component works on
+    // iPhone everywhere else on this site (location-section.tsx,
+    // hall-of-fame-section.tsx, …), all of which mount well after the
+    // page's initial heavy paint has settled, while only the hero instance
+    // fails. iOS Safari's autoplay gate appears to be more likely to reject
+    // (or simply never get around to granting) a play() call issued while
+    // the main thread is still busy laying out/painting everything else on
+    // the page — none of the event-based retries above fire in that case,
+    // because the browser never got far enough into the video's own
+    // lifecycle to emit loadeddata/canplay either. Polling actual playback
+    // PROGRESS (currentTime advancing), not just whether play() was called
+    // or resolved, catches that silently-stuck case and re-issues play()
+    // periodically until it's genuinely progressing, then stops.
+    let lastTime = -1;
+    let stableTicks = 0;
+    let watchdogTicks = 0;
+    const WATCHDOG_MAX_TICKS = 40; // ~16s at 400ms/tick — give up rather than poll forever
+    const watchdog = window.setInterval(() => {
+      watchdogTicks++;
+      if (watchdogTicks > WATCHDOG_MAX_TICKS) {
+        window.clearInterval(watchdog);
+        return;
+      }
+      if (video.paused) {
+        tryPlay();
+        return;
+      }
+      if (video.currentTime === lastTime) {
+        stableTicks++;
+        // A couple of consecutive polls with no forward progress means
+        // playback is stuck (not just between frames) — nudge it again.
+        if (stableTicks >= 2) tryPlay();
+      } else {
+        stableTicks = 0;
+        lastTime = video.currentTime;
+        // Genuinely playing now — this watchdog has done its job.
+        window.clearInterval(watchdog);
+      }
+    }, 400);
+
     function draw() {
       if (cancelled || !video || !canvas || !ctx) return;
       // `video.seeking` guards the loop restart: when a looping <video>
@@ -144,6 +187,7 @@ export default function ChromaVideo({
       video.removeEventListener("canplay", tryPlay);
       window.removeEventListener("touchstart", onFirstInteraction);
       window.removeEventListener("pointerdown", onFirstInteraction);
+      window.clearInterval(watchdog);
       cancelAnimationFrame(rafId);
     };
   }, [threshold, feather]);

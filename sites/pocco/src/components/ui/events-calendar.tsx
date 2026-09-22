@@ -1095,6 +1095,15 @@ function EventCheckoutEmbed({ url }: { url: string }) {
     // appears", a jarring two-step reveal. Waiting for `load` instead means
     // the spinner only goes away once there's actually something to see in
     // its place.
+    // Small extra delay after the iframe's own `load` — confirmed live
+    // that `load` alone still fires before Fourvenues' widget has replaced
+    // its i18n placeholder strings (visibly "Microsites.event_page.tick"
+    // instead of the real translated heading) with the real content, since
+    // that swap apparently happens async, after `load`, inside their own
+    // JS. There's no further public signal to observe for "translations
+    // applied" from outside their app, so this pads a fixed, empirically
+    // reasonable margin rather than chasing another still-too-early event.
+    const revealAfterLoad = () => setTimeout(() => setLoaded(true), 400);
     const loadObserver = new MutationObserver(() => {
       const iframe = iframeContainer.querySelector("iframe");
       if (iframe) {
@@ -1109,9 +1118,9 @@ function EventCheckoutEmbed({ url }: { url: string }) {
         // so this read doesn't throw the way a genuinely cross-origin
         // iframe's would.
         if (iframe.contentDocument?.readyState === "complete") {
-          setLoaded(true);
+          revealAfterLoad();
         } else {
-          iframe.addEventListener("load", () => setLoaded(true), { once: true });
+          iframe.addEventListener("load", revealAfterLoad, { once: true });
         }
       }
     });
@@ -1159,27 +1168,52 @@ function EventCheckoutEmbed({ url }: { url: string }) {
   }, [url, mountId]);
 
   return (
-    <div style={{ position: "relative" }}>
-      {!loaded && (
-        <div
-          style={{
-            // Fixed height while loading, not the ~1400px the mount point
-            // below grows to once Fourvenues' real content is in it —
-            // without a cap here, this loading state sat centered inside
-            // whatever tall empty box the (invisible, opacity:0, but still
-            // layout-participating) mount point below was already
-            // reserving, pushing the spinner itself far down past the
-            // visible modal area a visitor would see without scrolling
-            // first. 400 matches the mount point's own former static
-            // minHeight (see below).
-            height: 400,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 14,
-          }}
-        >
+    // Fixed min-height at all times (loading AND loaded), not just while
+    // loading — the spinner is overlaid on top (position:absolute) instead
+    // of taking up its own document-flow space, so nothing about this
+    // box's own size changes when `loaded` flips. Previously the spinner
+    // occupied real flow space at a fixed 400px and disappeared outright
+    // the moment `loaded` became true, while the mount point below (held
+    // at height:0 until then) simultaneously grew to the iframe's real
+    // size — reported directly as "it shrinks small, then FV appears": two
+    // separate elements swapping which one has size, right as the visitor
+    // is looking at it. Keeping one stable box the whole time and just
+    // cross-fading its *contents* removes that size change entirely — the
+    // spinner sits still and fades out once there's something to fade in
+    // over it, rather than the box itself resizing out from under it.
+    <div
+      style={{
+        position: "relative",
+        minHeight: 400,
+        // Smooths the one remaining size change: once `loaded` flips, the
+        // mount point below jumps from height:0 to the iframe's real
+        // (often much taller) height in the same instant the spinner
+        // layer above starts fading out. Transitioning this box's own
+        // minHeight lets that growth animate alongside the fade instead of
+        // snapping instantly — min-height (not height) so this box can
+        // still grow taller than 400 on its own once the mount point's
+        // real content pushes past it.
+        transition: "min-height 0.25s ease",
+      }}
+    >
+      <div
+        aria-hidden={loaded}
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 14,
+          opacity: loaded ? 0 : 1,
+          transition: "opacity 0.25s ease",
+          // Stops swallowing clicks/taps once faded out — without this, an
+          // invisible-but-still-inset:0 spinner layer would sit on top of
+          // the now-visible checkout iframe and block interaction with it.
+          pointerEvents: loaded ? "none" : "auto",
+        }}
+      >
           <div
             aria-hidden
             style={{
@@ -1204,13 +1238,20 @@ function EventCheckoutEmbed({ url }: { url: string }) {
           <style>{`
             @keyframes fv-checkout-spin { to { transform: rotate(360deg); } }
           `}</style>
-        </div>
-      )}
-      {/* Collapsed to zero height while loading (not just hidden via
-          opacity) — opacity:0 alone still occupies its real layout space,
-          which is what pushed the spinner above down past the visible
-          modal area once Fourvenues' content made this box ~1400px tall
-          even before `loaded` flips true. */}
+      </div>
+      {/* Collapsed to zero height while loading, not just hidden via
+          opacity/visibility — those still occupy their real (eventually
+          ~1400px) layout space immediately, which would stretch the
+          outer minHeight:400 box (and the spinner absolutely positioned
+          to fill it) to that same height from the very first frame,
+          pushing the spinner down past the visible modal area — the
+          exact bug already fixed once before. Kept collapsed at 0 through
+          the fade: the CSS transition on opacity above still plays over
+          those ~250ms because the spinner and the (still zero-height)
+          mount point briefly coexist, then this snaps to its real size
+          right as the now-fully-transparent spinner layer stops being
+          visible anyway, so the jump reads as the natural reveal of the
+          modal's real height, not as an element visibly resizing. */}
       <div
         id={mountId}
         style={loaded ? undefined : { height: 0, overflow: "hidden" }}

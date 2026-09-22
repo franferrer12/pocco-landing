@@ -141,10 +141,12 @@ function eventDateKey(event: { date: number }): number {
 // off of how IT was first requested — with the preload in place, ticket
 // pricing inside the embedded checkout broke (CORS failures on their own
 // pricing-info endpoint, then a crash in their calculatePrice trying to
-// read the missing response). Preconnect alone doesn't touch how the
-// script is fetched or executed, only how fast the connection to fetch it
-// is ready, so it can't cause that. Module-level guard so this only runs
-// once per page load, not once per EventsCalendar mount.
+// read the missing response). A plain `fetch()` into cache (see the effect
+// below) doesn't have that failure mode — it's just an ordinary HTTP
+// request for the same URL a `<script src>` tag makes on tap, so there's no
+// separate preload-vs-consume credentials mismatch for Fourvenues' script
+// to get confused by. Module-level guard so this only runs once per page
+// load, not once per EventsCalendar mount.
 let checkoutConnectionWarmed = false;
 
 export default function EventsCalendar() {
@@ -175,6 +177,32 @@ export default function EventsCalendar() {
     preconnect.href = "https://www.fourvenues.com";
     preconnect.crossOrigin = "anonymous";
     document.head.appendChild(preconnect);
+
+    // Beyond just warming the connection: fetch the checkout widget's own
+    // script right away, well before any tap, so that when
+    // EventCheckoutEmbed later injects its own <script src="..."> element
+    // (unchanged, on tap, exactly as before) most of the round-trip has
+    // already happened. Fourvenues serves this with `cache-control:
+    // max-age=0` (checked directly against their response headers), so the
+    // browser can't skip the network entirely on the later request — but it
+    // CAN send a conditional revalidation (If-Modified-Since/ETag) and get
+    // back a cheap 304 instead of a full download if nothing changed, and
+    // the request itself no longer pays DNS/TLS/TTFB cold (their edge is
+    // behind Cloudflare, confirmed cf-cache-status: HIT on this fetch, so
+    // that leg is fast once it's not also the very first contact). A plain
+    // `fetch()` (not `<link rel="preload">`, the approach tried previously)
+    // doesn't affect how the resource is later requested by a real <script>
+    // tag — it's just an ordinary HTTP request for the same URL, no
+    // separate "preload not consumed" warning and no distinct credentials
+    // mode to mismatch — so this can't reproduce the pricing/CORS breakage
+    // preload caused when that was tried instead.
+    fetch("https://www.fourvenues.com/assets/iframe/pocco-club/events?theme=dark", {
+      mode: "cors",
+      credentials: "omit",
+    }).catch(() => {
+      // Best-effort only — EventCheckoutEmbed's own script tag still works
+      // exactly as before if this fails or never resolves.
+    });
   }, []);
 
   // The "next up" event drives the featured-card treatment and must stay

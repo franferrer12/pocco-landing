@@ -71,8 +71,16 @@ export default function BrandsMarquee({ padding = "1.5vh 0" }: { padding?: strin
         .brands-marquee-track {
           animation: brands-marquee-scroll 30s linear infinite;
         }
-        .brands-marquee-track:hover {
-          animation-play-state: paused;
+        /* Pause-on-hover only for devices with a real mouse. Touch browsers
+           (iOS Safari included) apply :hover on tap and don't release it
+           until a tap elsewhere, so a plain :hover rule here paused the
+           marquee on every single tap and left it stuck until the next one —
+           reading as "tap to pause/resume" instead of the intended
+           desktop-only hover-to-inspect behavior. */
+        @media (hover: hover) and (pointer: fine) {
+          .brands-marquee-track:hover {
+            animation-play-state: paused;
+          }
         }
       `}</style>
     </div>

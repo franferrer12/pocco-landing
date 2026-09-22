@@ -70,8 +70,40 @@ export default function ChromaVideo({
     if (video.readyState >= 1) resize();
     video.addEventListener("loadedmetadata", resize);
 
-    const playPromise = video.play();
-    if (playPromise) playPromise.catch(() => {});
+    // iOS Safari's autoplay policy is stricter than desktop/Android Chrome
+    // about a <video> that's effectively invisible — and this one always is,
+    // by design (1x1px, opacity:0, only ever used as a decode source for the
+    // canvas below). `muted` + `playsInline` are already set (required, but
+    // NOT sufficient on iOS Safari specifically) — a bare video.play() call
+    // right after mount silently no-ops there instead of throwing, so the
+    // .catch(() => {}) above hid the failure rather than fixing it: the
+    // canvas stayed static on its very first (black, pre-chroma-key) frame
+    // forever, which is exactly the "logo doesn't rotate on iPhone" bug.
+    // Retrying play() from several different points in the video element's
+    // own lifecycle — not just once at mount — covers the different reasons
+    // that initial call can lose the race (metadata not loaded yet, decoder
+    // not ready, autoplay gate not yet lifted) without needing to detect
+    // iOS specifically; it's a no-op on browsers where the first call
+    // already succeeded, since play() on an already-playing video is safe.
+    const tryPlay = () => {
+      const p = video.play();
+      if (p) p.catch(() => {});
+    };
+    tryPlay();
+    video.addEventListener("loadeddata", tryPlay);
+    video.addEventListener("canplay", tryPlay);
+    // Last-resort fallback: iOS Safari can also require the play() call to
+    // happen inside a real user-gesture handler the first time, with no
+    // earlier programmatic call ever succeeding — a one-time listener on the
+    // page's first touch/click retries once more from directly inside that
+    // gesture, then removes itself either way.
+    const onFirstInteraction = () => {
+      tryPlay();
+      window.removeEventListener("touchstart", onFirstInteraction);
+      window.removeEventListener("pointerdown", onFirstInteraction);
+    };
+    window.addEventListener("touchstart", onFirstInteraction, { once: true, passive: true });
+    window.addEventListener("pointerdown", onFirstInteraction, { once: true });
 
     function draw() {
       if (cancelled || !video || !canvas || !ctx) return;
@@ -108,6 +140,10 @@ export default function ChromaVideo({
     return () => {
       cancelled = true;
       video.removeEventListener("loadedmetadata", resize);
+      video.removeEventListener("loadeddata", tryPlay);
+      video.removeEventListener("canplay", tryPlay);
+      window.removeEventListener("touchstart", onFirstInteraction);
+      window.removeEventListener("pointerdown", onFirstInteraction);
       cancelAnimationFrame(rafId);
     };
   }, [threshold, feather]);

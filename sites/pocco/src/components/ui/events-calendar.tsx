@@ -1036,6 +1036,17 @@ let checkoutScriptCounter = 0;
 
 function EventCheckoutEmbed({ url }: { url: string }) {
   const [mountId] = useState(() => `fv-checkout-${++checkoutScriptCounter}`);
+  // Fourvenues' widget takes several seconds end to end (their own script
+  // load + internal init + the event-specific iframe's own load — measured
+  // directly: ~3s between the <script> tag landing in the DOM and the
+  // browser even starting the next real request, then close to another
+  // second for the iframe itself, all of it happening inside their
+  // third-party code with nothing on our side to shorten it further). With
+  // nothing shown here in the meantime, that reads as the page being
+  // frozen/stuck rather than working — a visible spinner is what actually
+  // addresses that complaint (a user unsure whether to wait) even though it
+  // doesn't reduce the real wait time itself.
+  const [loaded, setLoaded] = useState(false);
 
   // Writing this hash used to raced EventModal's own scroll-lock cleanup,
   // which also stripped window.location.hash on every effect cleanup —
@@ -1072,6 +1083,23 @@ function EventCheckoutEmbed({ url }: { url: string }) {
     iframeContainer.id = "fourvenues-iframe";
     container.appendChild(iframeContainer);
 
+    // Watches for Fourvenues' own real <iframe> landing inside the
+    // container their script targets (by id, above) — that's the actual
+    // "done loading" signal, not just the <script> tag existing (which
+    // fires the moment it's appended, long before the widget has done
+    // anything). Once real markup shows up inside it, the spinner is no
+    // longer needed regardless of whether the iframe's own content has
+    // finished painting yet (like the featured-card flyer images
+    // elsewhere, "the iframe exists" is close enough to "visible" that
+    // waiting for more granular signals isn't worth the complexity).
+    const loadObserver = new MutationObserver(() => {
+      if (iframeContainer.querySelector("iframe")) {
+        setLoaded(true);
+        loadObserver.disconnect();
+      }
+    });
+    loadObserver.observe(iframeContainer, { childList: true, subtree: true });
+
     // Same scrollIntoView hijack workaround as the old full-listing embed
     // (see git history / events-section.tsx): Fourvenues' script calls
     // `#fourvenues-iframe-anchor`.scrollIntoView() once its iframe loads,
@@ -1093,13 +1121,85 @@ function EventCheckoutEmbed({ url }: { url: string }) {
     script.src = "https://www.fourvenues.com/assets/iframe/pocco-club/events?theme=dark";
     container.appendChild(script);
 
+    // Deliberately NOT disconnecting loadObserver here — same Strict Mode
+    // trap the hash-write comment above already documents for a different
+    // piece of state: this cleanup also runs after Strict Mode's throwaway
+    // first mount, and disconnecting the observer there permanently killed
+    // it before the real, lasting mount ever got a chance to see the
+    // iframe land (injectedRef.current being true by then made the second
+    // mount's effect body return immediately, so no replacement observer
+    // was ever created either) — confirmed live: the iframe was fully
+    // loaded and visible in the DOM while the spinner kept spinning
+    // forever, because nothing was left listening for it. The observer
+    // disconnects itself anyway as soon as it finds the iframe (see its
+    // own callback above), so leaving it running past this cleanup doesn't
+    // leak — it just means it can still do its one job if this effect
+    // instance turns out to be the one that sticks around.
     return () => {
       clearTimeout(restoreScrollIntoViewTimeout);
       Element.prototype.scrollIntoView = nativeScrollIntoView;
     };
   }, [url, mountId]);
 
-  return <div id={mountId} style={{ minHeight: 400 }} />;
+  return (
+    <div style={{ position: "relative" }}>
+      {!loaded && (
+        <div
+          style={{
+            // Fixed height while loading, not the ~1400px the mount point
+            // below grows to once Fourvenues' real content is in it —
+            // without a cap here, this loading state sat centered inside
+            // whatever tall empty box the (invisible, opacity:0, but still
+            // layout-participating) mount point below was already
+            // reserving, pushing the spinner itself far down past the
+            // visible modal area a visitor would see without scrolling
+            // first. 400 matches the mount point's own former static
+            // minHeight (see below).
+            height: 400,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 14,
+          }}
+        >
+          <div
+            aria-hidden
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: "50%",
+              border: "3px solid rgba(255,255,255,0.15)",
+              borderTopColor: "#e21212",
+              animation: "fv-checkout-spin 0.8s linear infinite",
+            }}
+          />
+          <p
+            style={{
+              fontFamily: "'Inter', sans-serif",
+              fontSize: 13,
+              color: "rgba(245,245,245,0.4)",
+              margin: 0,
+            }}
+          >
+            Cargando entradas…
+          </p>
+          <style>{`
+            @keyframes fv-checkout-spin { to { transform: rotate(360deg); } }
+          `}</style>
+        </div>
+      )}
+      {/* Collapsed to zero height while loading (not just hidden via
+          opacity) — opacity:0 alone still occupies its real layout space,
+          which is what pushed the spinner above down past the visible
+          modal area once Fourvenues' content made this box ~1400px tall
+          even before `loaded` flips true. */}
+      <div
+        id={mountId}
+        style={loaded ? undefined : { height: 0, overflow: "hidden" }}
+      />
+    </div>
+  );
 }
 
 const pillTagStyle: React.CSSProperties = {

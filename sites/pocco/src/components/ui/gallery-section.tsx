@@ -1,15 +1,26 @@
 "use client";
 
-// Scroll-driven parallax gallery: three columns of photos drift vertically at
-// different speeds as the visitor scrolls through a tall (300vh) section,
-// while the columns themselves stay pinned mid-viewport (position: sticky)
-// for the whole scroll range — reads as the wall of photos gliding past
-// rather than the page just scrolling over a static grid. Inspired by the
-// "Animated Gallery" pattern on 21st.dev (ContainerScroll / GalleryCol /
+// Desktop: scroll-driven parallax gallery — three columns of photos drift
+// vertically at different speeds as the visitor scrolls through a tall
+// (300vh) section, while the columns themselves stay pinned mid-viewport
+// (position: sticky) for the whole scroll range. Inspired by the "Animated
+// Gallery" pattern on 21st.dev (ContainerScroll / GalleryCol /
 // GalleryContainer); that component's source is its own set of building
 // blocks we don't have, so this is a from-scratch reimplementation of the
 // observed scroll-parallax behavior in POCCO's own dark/red visual language,
 // not a copy of its code.
+//
+// Mobile: a plain static grid with a simple fade/slide-up per tile as it
+// scrolls into view (whileInView), no sticky and no scroll-position
+// tracking at all. The parallax version was confirmed to "snag"/stutter
+// under real touch scrolling on iOS Safari — sticky's main-thread position
+// recalculation fights with Safari's own address-bar collapse/expand
+// happening during the same gesture (see chroma-video.tsx and this file's
+// git history for the incremental debounce/GPU-layer attempts that tried to
+// patch the parallax version instead; none of them fully resolved it, since
+// the sticky+scroll-tracked-transform combination is the root cause, not a
+// tunable side effect of it). Removing that mechanism entirely on mobile
+// rather than continuing to patch it around the edges.
 //
 // Real event photos live in public/assets/gallery/ — shot on location at the
 // club (laser/smoke, the neon "POCCO Club" sign, the DJ booth). The pool
@@ -76,8 +87,13 @@ function distributeToColumns(photos: Tile[], columnSizes: number[]): Tile[][] {
 }
 
 const [COL_1, COL_2, COL_3] = distributeToColumns(PHOTOS, [3, 3, 4]);
+// Mobile grid reuses the same photo pool but flattened into simple reading
+// order (not the column-interleaved arrangement above, which exists only to
+// spread repeats across parallax columns scrolling at different speeds — a
+// concept that doesn't apply to a plain static grid).
+const MOBILE_TILES: Tile[] = distributeToColumns(PHOTOS, [PHOTOS.length])[0];
 
-function GalleryTile({ tile }: { tile: Tile }) {
+function GalleryTile({ tile, eager }: { tile: Tile; eager?: boolean }) {
   return (
     <div
       style={{
@@ -94,21 +110,22 @@ function GalleryTile({ tile }: { tile: Tile }) {
         alt=""
         fill
         quality={90}
-        // Every tile needs to load eagerly, not lazily: this section's
-        // photos don't reveal themselves via normal document scroll — they
-        // live inside a position:sticky box and are shifted around purely
-        // by a transform (the parallax columns), so their actual DOM
-        // position never moves into the viewport the way lazy-loading's
-        // IntersectionObserver expects. With default lazy loading, tiles
-        // whose untransformed layout position started off-screen (most of
-        // them, since the columns are offset by up to ±220px on load) never
-        // got their real `src` assigned, showing up as empty dark boxes
-        // that were never going to load no matter how the parallax moved
-        // them — because the layout box itself doesn't move, only its
-        // painted position does. `priority` (not just loading="eager") is
-        // what actually disables next/image's own IntersectionObserver-based
-        // lazy mount — eager alone still left it gating the real `src`.
-        priority
+        // Desktop tiles need to load eagerly, not lazily: they live inside a
+        // position:sticky box and are shifted around purely by a transform
+        // (the parallax columns), so their actual DOM position never moves
+        // into the viewport the way lazy-loading's IntersectionObserver
+        // expects. With default lazy loading, tiles whose untransformed
+        // layout position started off-screen (most of them, since the
+        // columns are offset by up to ±220px on load) never got their real
+        // `src` assigned, showing up as empty dark boxes that were never
+        // going to load no matter how the parallax moved them. `priority`
+        // (not just loading="eager") is what actually disables next/image's
+        // own IntersectionObserver-based lazy mount — eager alone still left
+        // it gating the real `src`. The mobile grid has no such transform
+        // trick (tiles are exactly where they're laid out), so it can use
+        // normal lazy loading instead — `eager` is only passed for desktop.
+        priority={eager}
+        loading={eager ? undefined : "lazy"}
         // Tiles sit in a 3-column grid capped at max-width:1100, so a tile's
         // real CSS width tops out around 352px. `sizes` is what Next uses to
         // pick a srcset candidate — the browser is supposed to multiply this
@@ -151,7 +168,7 @@ function GalleryColumn({
       className={offsetClass}
     >
       {tiles.map((tile, i) => (
-        <GalleryTile key={i} tile={tile} />
+        <GalleryTile key={i} tile={tile} eager />
       ))}
     </motion.div>
   );
@@ -163,7 +180,62 @@ function GalleryColumn({
 // why this can't just be a vh value applied directly to the driver.
 const EXTRA_SCROLL_PX = 90;
 
-export default function GallerySection() {
+// Below this width, the mobile static-grid variant renders instead of the
+// desktop parallax — matches every other mobile breakpoint already used
+// across this site's other sections (events-section.tsx, gallery-header
+// below, etc.).
+const MOBILE_BREAKPOINT = 640;
+
+function useIsMobile() {
+  // Starts false (desktop assumption) rather than reading matchMedia
+  // synchronously — window isn't available during SSR, and guessing wrong
+  // for one frame on mobile (briefly rendering the desktop parallax markup
+  // before this effect corrects it) is preferable to a hydration mismatch
+  // between server and client markup.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`);
+    setIsMobile(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return isMobile;
+}
+
+/* Mobile variant — plain grid, each tile fades/slides up once as it enters
+   the viewport. `viewport={{ once: true, margin: "0px 0px -80px 0px" }}`
+   triggers a little before the tile is fully on-screen (so it's finished
+   animating by the time it's actually visible, not still animating into
+   view) and never re-triggers on scroll back up — a one-time reveal, not a
+   scroll-position-tracked effect, so nothing here reads or reacts to scroll
+   position on every frame the way the parallax version's useScroll did. */
+function MobileGallery() {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(2, 1fr)",
+        gap: "1.4vw",
+        width: "100%",
+      }}
+    >
+      {MOBILE_TILES.map((tile, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "0px 0px -80px 0px" }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <GalleryTile tile={tile} />
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+function DesktopGallery() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
@@ -201,25 +273,59 @@ export default function GallerySection() {
   useEffect(() => {
     const updateViewportHeight = () => setViewportHeight(window.innerHeight);
     updateViewportHeight();
-    // Debounced rather than reacting to every resize event directly: mobile
-    // Safari's address bar collapsing/expanding while the user scrolls
-    // fires resize repeatedly mid-gesture, and each one was re-rendering
-    // this whole section (including the parallax columns' transforms) right
-    // in the middle of the touch — part of what read as the columns
-    // stuttering/jumping ahead of the finger. A real device rotation or
-    // window resize still lands well within 150ms of settling, so this
-    // doesn't lose any genuine resize.
-    let timeoutId: number | undefined;
-    const onResize = () => {
-      window.clearTimeout(timeoutId);
-      timeoutId = window.setTimeout(updateViewportHeight, 150);
-    };
-    window.addEventListener("resize", onResize);
-    return () => {
-      window.removeEventListener("resize", onResize);
-      window.clearTimeout(timeoutId);
-    };
+    window.addEventListener("resize", updateViewportHeight);
+    return () => window.removeEventListener("resize", updateViewportHeight);
   }, []);
+
+  return (
+    <div
+      ref={scrollRef}
+      style={{
+        position: "relative",
+        height: gridHeight != null ? gridHeight + EXTRA_SCROLL_PX : "100vh",
+      }}
+    >
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          maxHeight:
+            gridHeight != null && viewportHeight != null
+              ? Math.min(gridHeight, viewportHeight)
+              : "100vh",
+          display: "flex",
+          alignItems: "flex-start",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          ref={gridRef}
+          style={{
+            position: "relative",
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "1.4vw",
+            width: "100%",
+            maxWidth: 1100,
+            margin: "0 auto",
+          }}
+        >
+          <GalleryColumn tiles={COL_1} progress={scrollYProgress} range={[-160, 160]} />
+          <GalleryColumn
+            tiles={COL_2}
+            progress={scrollYProgress}
+            range={[220, -220]}
+            offsetClass="gallery-col-mid"
+          />
+          <GalleryColumn tiles={COL_3} progress={scrollYProgress} range={[-120, 120]} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function GallerySection() {
+  const isMobile = useIsMobile();
 
   return (
     <section
@@ -270,82 +376,17 @@ export default function GallerySection() {
         </h2>
       </div>
 
-      {/* Driver height is set explicitly from the measured grid height (see
-          the ResizeObserver above) rather than a vh value, so it's always
-          exactly (grid height + EXTRA_SCROLL_PX) regardless of viewport
-          shape — this is what gives position:sticky a real, correctly-sized
-          margin to pin within. Until the first measurement lands,
-          gridHeight is null and the driver falls back to 100vh so there's
-          no zero-height flash. */}
-      <div
-        ref={scrollRef}
-        style={{
-          position: "relative",
-          height: gridHeight != null ? gridHeight + EXTRA_SCROLL_PX : "100vh",
-        }}
-      >
-        <div
-          style={{
-            position: "sticky",
-            top: 0,
-            // Capped at 100vh so an unusually tall grid still can't push the
-            // sticky box past the viewport itself — on any shorter grid,
-            // gridHeight (measured) governs instead.
-            maxHeight:
-              gridHeight != null && viewportHeight != null
-                ? Math.min(gridHeight, viewportHeight)
-                : "100vh",
-            display: "flex",
-            alignItems: "flex-start",
-            overflow: "hidden",
-            // Promotes this sticky box to its own GPU compositing layer.
-            // Without it, mobile Safari re-evaluates the sticky element's
-            // position on the main thread as part of the same work driving
-            // its own address-bar collapse/expand during the touch
-            // gesture — the two fighting over the same frame is what read
-            // as the scroll "catching"/snagging rather than following the
-            // finger smoothly. translateZ(0) forces its own layer so the
-            // browser can composite it independently instead.
-            transform: "translateZ(0)",
-            WebkitTransform: "translateZ(0)",
-          }}
-          className="gallery-sticky"
-        >
-          <div
-            ref={gridRef}
-            style={{
-              position: "relative",
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "1.4vw",
-              width: "100%",
-              maxWidth: 1100,
-              margin: "0 auto",
-            }}
-          >
-            <GalleryColumn tiles={COL_1} progress={scrollYProgress} range={[-160, 160]} />
-            <GalleryColumn
-              tiles={COL_2}
-              progress={scrollYProgress}
-              range={[220, -220]}
-              offsetClass="gallery-col-mid"
-            />
-            <GalleryColumn tiles={COL_3} progress={scrollYProgress} range={[-120, 120]} />
-          </div>
-        </div>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        {isMobile ? <MobileGallery /> : <DesktopGallery />}
       </div>
 
       <style>{`
         /* Middle column starts pushed down so the three columns don't align
-           into a flat grid — matches the reference's staggered-column feel. */
+           into a flat grid — matches the reference's staggered-column feel.
+           Desktop-only: the mobile variant is a plain 2-col grid with no
+           column offset. */
         .gallery-col-mid { margin-top: 10vh; }
         @media (max-width: 640px) {
-          /* Reduced from 6vh — on a narrow phone only ~3 tiles are visible
-             per column at once, so a large offset on the middle column
-             left a big empty black gap above it instead of reading as a
-             deliberate stagger. A smaller nudge keeps a bit of the
-             asymmetry without that dead space. */
-          .gallery-col-mid { margin-top: 2vh; }
           /* Same fix as .events-section: the fixed nav eats proportionally
              more of a narrow phone's viewport, so the header needs more
              clearance there than desktop's own padding-top. */

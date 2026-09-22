@@ -101,9 +101,18 @@ export default function ChromaVideo({
       tryPlay();
       window.removeEventListener("touchstart", onFirstInteraction);
       window.removeEventListener("pointerdown", onFirstInteraction);
+      window.removeEventListener("scroll", onFirstInteraction);
     };
     window.addEventListener("touchstart", onFirstInteraction, { once: true, passive: true });
     window.addEventListener("pointerdown", onFirstInteraction, { once: true });
+    // Confirmed directly on the reporting device: scrolling away and back
+    // was enough to make the hero's logo start rotating — i.e. play() DOES
+    // succeed once issued from inside a scroll event, it just never got
+    // that chance on load because nothing was retrying against scroll
+    // specifically before now (touchstart/pointerdown are the START of a
+    // scroll gesture and can fire before the browser has actually decided
+    // to treat it as user activation; the scroll event itself is unambiguous).
+    window.addEventListener("scroll", onFirstInteraction, { once: true, passive: true });
 
     // Belt-and-suspenders watchdog for instances that mount inside a heavy
     // first paint (the hero, jelly-fish.tsx: a 2400px priority background
@@ -124,18 +133,33 @@ export default function ChromaVideo({
     let lastTime = -1;
     let stableTicks = 0;
     let watchdogTicks = 0;
-    const WATCHDOG_MAX_TICKS = 40; // ~16s at 400ms/tick — give up rather than poll forever
-    const watchdog = window.setInterval(() => {
+    // 16s of coverage total, but front-loaded: the very first retries fire
+    // within ~100-200ms of mount (fast enough to resolve before the user
+    // even perceives a frozen logo) rather than only every 400ms from the
+    // start — a fixed 400ms interval meant the very first extra tryPlay()
+    // couldn't land before ~800ms (two ticks, since one stalled reading
+    // doesn't confirm "stuck" on its own), which on the reporting device
+    // was apparently still too slow to win the race against the hero's own
+    // heavy first paint. Scroll fixed it "by accident" simply because it
+    // was the first thing that retried play() sooner than that.
+    const WATCHDOG_FAST_TICKS = 8; // ~100ms each ≈ 800ms of fast coverage
+    const WATCHDOG_FAST_MS = 100;
+    const WATCHDOG_SLOW_MS = 500;
+    const WATCHDOG_MAX_MS = 16000; // give up after ~16s rather than poll forever
+    let watchdog = 0;
+    const scheduleTick = (delay: number) => {
+      watchdog = window.setTimeout(tick, delay);
+    };
+    function tick() {
+      if (!video) return;
       watchdogTicks++;
-      if (watchdogTicks > WATCHDOG_MAX_TICKS) {
-        window.clearInterval(watchdog);
-        return;
-      }
+      const elapsed = watchdogTicks <= WATCHDOG_FAST_TICKS
+        ? watchdogTicks * WATCHDOG_FAST_MS
+        : WATCHDOG_FAST_TICKS * WATCHDOG_FAST_MS + (watchdogTicks - WATCHDOG_FAST_TICKS) * WATCHDOG_SLOW_MS;
+      if (elapsed > WATCHDOG_MAX_MS) return;
       if (video.paused) {
         tryPlay();
-        return;
-      }
-      if (video.currentTime === lastTime) {
+      } else if (video.currentTime === lastTime) {
         stableTicks++;
         // A couple of consecutive polls with no forward progress means
         // playback is stuck (not just between frames) — nudge it again.
@@ -144,9 +168,11 @@ export default function ChromaVideo({
         stableTicks = 0;
         lastTime = video.currentTime;
         // Genuinely playing now — this watchdog has done its job.
-        window.clearInterval(watchdog);
+        return;
       }
-    }, 400);
+      scheduleTick(watchdogTicks < WATCHDOG_FAST_TICKS ? WATCHDOG_FAST_MS : WATCHDOG_SLOW_MS);
+    }
+    scheduleTick(WATCHDOG_FAST_MS);
 
     function draw() {
       if (cancelled || !video || !canvas || !ctx) return;
@@ -187,7 +213,8 @@ export default function ChromaVideo({
       video.removeEventListener("canplay", tryPlay);
       window.removeEventListener("touchstart", onFirstInteraction);
       window.removeEventListener("pointerdown", onFirstInteraction);
-      window.clearInterval(watchdog);
+      window.removeEventListener("scroll", onFirstInteraction);
+      window.clearTimeout(watchdog);
       cancelAnimationFrame(rafId);
     };
   }, [threshold, feather]);

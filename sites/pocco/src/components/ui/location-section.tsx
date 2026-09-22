@@ -102,7 +102,12 @@ export default function LocationSection() {
             width="100%"
             height="100%"
             style={{ border: 0, display: "block" }}
-            loading="lazy"
+            // Eager, not lazy: this section sits well below the fold, but
+            // the request was specifically for the map to start loading as
+            // soon as the page itself loads, not deferred until the user
+            // scrolls near it — loading="lazy" was the browser's own
+            // IntersectionObserver-based defer doing exactly that.
+            loading="eager"
             referrerPolicy="no-referrer-when-downgrade"
             title="Mapa de POCCO Club en Alzira"
           />

@@ -6,16 +6,28 @@
 // already live elsewhere (vip-section.tsx, location-section.tsx). The
 // brand logo marquee (brands-marquee.tsx) sits outside this component, in
 // page.tsx — once above EventsSection, once again right under
-// LocationSection's WhatsApp/Instagram CTAs, just before this footer. The
-// three legal links still open in a popup modal instead of navigating
-// away, same pattern EventModal (events-calendar.tsx) uses for the
+// LocationSection's WhatsApp/Instagram CTAs, just before this footer.
+//
+// The three legal links are now real <Link> elements to /aviso-legal,
+// /privacidad and /cookies (previously plain <button>s that only opened
+// the popup, with no crawlable href at all — flagged in the SEO review as
+// the three legal pages being orphaned: indexed via sitemap.xml but
+// unreachable by ANY on-site link, including from each other). The popup
+// itself is preserved as a progressive enhancement on top of that real
+// link, same pattern EventModal (events-calendar.tsx) uses for the
 // Fourvenues checkout: an overlay that locks background scroll, a panel
 // with its own header bar (title + close button) and internally scrollable
-// content — modal titles keep the full names ("Política de Privacidad")
-// even though the footer's own link labels are shortened, so the popup
-// still matches /privacidad, /aviso-legal and /cookies page titles.
+// content. A normal left-click still intercepts navigation and opens the
+// modal in place (same UX as before); a middle-click, cmd/ctrl-click, or
+// "open in new tab" falls through to the real href since only a plain left
+// click is intercepted — both a crawler following the link and a visitor
+// who wants the standalone page in a new tab get the real, indexable URL.
+// Modal titles keep the full names ("Política de Privacidad") even though
+// the footer's own link labels are shortened, so the popup still matches
+// /privacidad, /aviso-legal and /cookies page titles.
 
 import { useState, useEffect, type ReactNode } from "react";
+import Link from "next/link";
 import PrivacyPolicyContent from "./privacy-policy-content";
 import LegalNoticeContent from "./legal-notice-content";
 import CookiesPolicyContent from "./cookies-policy-content";
@@ -74,17 +86,48 @@ export default function Footer() {
           marginTop: "1rem",
         }}
       >
-        <button onClick={() => setOpenDoc("legal-notice")} style={footerLinkStyle}>
+        <Link
+          href="/aviso-legal"
+          onClick={(e) => {
+            // Only a plain left-click is intercepted — a modified click
+            // (cmd/ctrl/middle-click, "open in new tab") is left alone so
+            // it still navigates to the real standalone page instead of
+            // being silently swallowed into "open a popup on this page".
+            if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+              e.preventDefault();
+              setOpenDoc("legal-notice");
+            }
+          }}
+          style={footerLinkStyle}
+        >
           Aviso Legal
-        </button>
+        </Link>
         <span style={dividerStyle}>·</span>
-        <button onClick={() => setOpenDoc("privacy")} style={footerLinkStyle}>
+        <Link
+          href="/privacidad"
+          onClick={(e) => {
+            if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+              e.preventDefault();
+              setOpenDoc("privacy");
+            }
+          }}
+          style={footerLinkStyle}
+        >
           Privacidad
-        </button>
+        </Link>
         <span style={dividerStyle}>·</span>
-        <button onClick={() => setOpenDoc("cookies")} style={footerLinkStyle}>
+        <Link
+          href="/cookies"
+          onClick={(e) => {
+            if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+              e.preventDefault();
+              setOpenDoc("cookies");
+            }
+          }}
+          style={footerLinkStyle}
+        >
           Cookies
-        </button>
+        </Link>
       </div>
 
       {openDoc === "privacy" && (
@@ -115,6 +158,10 @@ const footerLinkStyle: React.CSSProperties = {
   border: "none",
   padding: 0,
   cursor: "pointer",
+  // These now render as <Link>/<a> (see the comment above on why), which
+  // needs an explicit textDecoration:none — unlike the <button> these
+  // replaced, an anchor doesn't default to no-underline on its own.
+  textDecoration: "none",
 };
 
 const dividerStyle: React.CSSProperties = {

@@ -9,39 +9,65 @@ import HallOfFameSection from "@/components/ui/hall-of-fame-section";
 import FaqSection from "@/components/ui/faq-section";
 import Footer from "@/components/ui/footer";
 import { PillNav } from "@/components/ui/pill-nav";
+import {
+  SITE_NAME,
+  LEGAL_NAME,
+  SITE_URL,
+  ADDRESS,
+  PHONE_E164,
+  EMAIL,
+  SOCIAL_URLS,
+} from "@/lib/site-data";
 
 export const metadata: Metadata = {
+  // Home-specific title/description instead of inheriting the root
+  // layout's generic ones verbatim — still built from the same SITE_NAME
+  // constant so the two stay related, but this copy leads with the actual
+  // local-SEO search intent ("discoteca en Alzira") rather than only the
+  // brand name, per the SEO review: the homepage is the site's single
+  // highest-value URL and was previously sharing undifferentiated metadata
+  // with every other page.
+  title: `${SITE_NAME} — Discoteca en Alzira, Valencia`,
+  description:
+    "POCCO Club, discoteca en Alzira (Valencia). Próximos eventos, reservados VIP y toda la información para tu próxima noche de fiesta en la Ribera.",
   alternates: { canonical: "/" },
 };
 
-// LocalBusiness/NightClub structured data — same real identity/address data
-// already confirmed and published in the legal pages (legal-notice-content.tsx,
-// privacy-policy-content.tsx: NIF B23996051, Calle Guadassuar 4, 46600 Alzira),
-// not duplicated by hand here beyond what's needed for the schema. Gives
-// Google a machine-readable name/address/hours/socials for potential rich
-// results (knowledge panel, map card) — there's no per-event data source
-// exposed outside the Fourvenues widget itself to also emit Event schema
-// from, so this deliberately stays LocalBusiness/NightClub-only for now.
+// LocalBusiness/NightClub structured data — real identity/address/contact
+// data, now read from the shared src/lib/site-data.ts instead of being
+// hand-duplicated here (see that file's own comment for why). Includes a
+// real phone number and opening hours as of this update — both previously
+// missing, flagged as a local-SEO gap since Google's ranking of local
+// results leans on relevance/distance/prominence signals like a complete,
+// consistent business listing. Event schema per event lives on each
+// /eventos/[slug] page instead of here — this stays the site-wide
+// LocalBusiness/NightClub entity, not a per-event one.
 const NIGHTCLUB_JSON_LD = {
   "@context": "https://schema.org",
   "@type": "NightClub",
-  name: "POCCO Club",
-  alternateName: "POCCOCLUB, S.L.",
-  url: "https://pocco.club",
-  logo: "https://pocco.club/assets/og/pocco-club-og.jpg",
-  image: "https://pocco.club/assets/og/pocco-club-og.jpg",
+  name: SITE_NAME,
+  alternateName: LEGAL_NAME,
+  url: SITE_URL,
+  logo: `${SITE_URL}/assets/og/pocco-club-og.jpg`,
+  image: `${SITE_URL}/assets/og/pocco-club-og.jpg`,
+  telephone: PHONE_E164,
+  email: EMAIL,
   address: {
     "@type": "PostalAddress",
-    streetAddress: "Calle Guadassuar, 4",
-    addressLocality: "Alzira",
-    addressRegion: "Valencia",
-    postalCode: "46600",
-    addressCountry: "ES",
+    ...ADDRESS,
   },
-  sameAs: [
-    "https://www.instagram.com/pocco.club/",
-    "https://wa.me/message/A3BHIH24Q6M4L1",
+  // Doors typically open at 01:00 per the FAQ copy ("Normalmente abrimos a
+  // la 01:00 y cerramos al amanecer") — expressed generically across
+  // Friday/Saturday since the exact night varies event to event and isn't
+  // fixed enough to state as a hard weekly schedule beyond that.
+  openingHoursSpecification: [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Friday", "Saturday"],
+      opens: "01:00",
+    },
   ],
+  sameAs: SOCIAL_URLS,
 };
 
 export default function Home() {

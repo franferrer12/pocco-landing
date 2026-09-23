@@ -18,6 +18,7 @@
 // floating in their own box.
 
 import Image from "next/image";
+import { WHATSAPP_URL } from "@/lib/site-data";
 
 const DISPLAY = "'Inter', 'Helvetica Neue', 'Arial Black', sans-serif";
 
@@ -26,12 +27,6 @@ const IMAGES = [
   "/assets/gallery/pocco-08.webp",
   "/assets/gallery/pocco-05.webp",
 ];
-
-// Club's real WhatsApp Business short link — this format (wa.me/message/…)
-// is generated from Meta Business and doesn't take a `?text=` query param
-// the way a plain wa.me/<number> link does; any prefilled message is
-// configured on Meta's side instead.
-const WHATSAPP_URL = "https://wa.me/message/A3BHIH24Q6M4L1";
 
 export default function VipSection() {
   return (

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import ChromaVideo from "./chroma-video";
 import EventsCalendar from "./events-calendar";
 
@@ -107,6 +108,26 @@ export default function EventsSection() {
       <EventsTicker />
 
       <EventsCalendar />
+
+      {/* Cross-link into the crawlable /eventos pages (real per-event URLs,
+          each with its own metadata and Event schema — see src/app/eventos)
+          — this calendar itself is client-rendered inside a modal, so it
+          has no indexable page of its own for a crawler or a shared link
+          to land on. Kept as a quiet text link, not a competing CTA. */}
+      <div style={{ textAlign: "center", marginTop: "4vh" }}>
+        <Link
+          href="/eventos"
+          style={{
+            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            fontSize: 14,
+            fontWeight: 500,
+            color: "rgba(245,245,245,0.5)",
+            textDecoration: "underline",
+          }}
+        >
+          Ver todos los eventos
+        </Link>
+      </div>
     </section>
   );
 }

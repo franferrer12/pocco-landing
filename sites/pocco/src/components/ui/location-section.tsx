@@ -8,6 +8,7 @@
 // click — dropped per request in favor of showing the real map immediately.
 
 import ChromaVideo from "./chroma-video";
+import { WHATSAPP_URL, INSTAGRAM_URL, PHONE_DISPLAY, PHONE_E164 } from "@/lib/site-data";
 
 const DISPLAY = "'Inter', 'Helvetica Neue', 'Arial Black', sans-serif";
 
@@ -15,11 +16,6 @@ const MAPS_EMBED_SRC =
   "https://www.google.com/maps?q=POCCO+Club+Alzira&output=embed";
 const MAPS_DIRECTIONS_URL =
   "https://www.google.com/maps/search/?api=1&query=POCCO+Club+Alzira";
-
-// Club's real WhatsApp Business short link — same one used in
-// vip-section.tsx, kept in sync between both.
-const WHATSAPP_URL = "https://wa.me/message/A3BHIH24Q6M4L1";
-const INSTAGRAM_URL = "https://www.instagram.com/pocco.club/";
 
 export default function LocationSection() {
   return (
@@ -184,6 +180,26 @@ export default function LocationSection() {
           Instagram
         </a>
       </div>
+
+      {/* Real phone number, previously missing everywhere on the site —
+          flagged in the SEO review as a local-SEO gap (Google's local
+          ranking leans on a complete, consistent business listing). A
+          plain tel: link, quiet styling like the rest of this section's
+          secondary text, not another pill CTA competing with
+          WhatsApp/Instagram above. */}
+      <p
+        style={{
+          textAlign: "center",
+          marginTop: "1.6vh",
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+          fontSize: 13,
+          color: "rgba(245,245,245,0.4)",
+        }}
+      >
+        <a href={`tel:${PHONE_E164}`} style={{ color: "inherit", textDecoration: "underline" }}>
+          {PHONE_DISPLAY}
+        </a>
+      </p>
 
       <style>{`
         @media (max-width: 640px) {

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import Script from "next/script";
 import ScrollPositionMemory from "@/components/ui/scroll-position-memory";
+import CookieConsent from "@/components/ui/cookie-consent";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -132,6 +133,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <ScrollPositionMemory />
         {children}
+        <CookieConsent />
       </body>
     </html>
   );

@@ -2,21 +2,20 @@
 // PrivacyPolicyContent/LegalNoticeContent: rendered both by /cookies and by
 // the footer's popup modal (see footer.tsx).
 //
-// This is a deliberately trimmed-down version of the source text the user
-// pasted in. That draft described Google Analytics, Meta Pixel, TikTok
-// Pixel and Nevent as active providers, plus an interactive
-// ACEPTAR/RECHAZAR/CONFIGURAR consent banner — none of which exist in this
-// codebase (confirmed via grep: no gtag/fbq/ttq/Nevent references anywhere
-// in src/, and no cookie-consent banner component at all). Publishing
-// claims about a functioning consent panel and trackers that aren't
-// actually installed would misdescribe the site, not just list the wrong
-// vendor names. Kept to what's real today — necessary/technical cookies
-// plus whatever Fourvenues' own embedded checkout widget may set (see
-// EventCheckoutEmbed in events-calendar.tsx) — with the rest of the
-// original structure (sections on international transfers, browser
-// settings, etc.) preserved since those stay true regardless of which
-// specific vendors end up added later. Add analytics/ad-pixel sections back
-// in only once those tools are actually wired into the site.
+// Originally trimmed down from the user's draft (which described Google
+// Analytics, Meta Pixel, TikTok Pixel and Nevent as active — none of which
+// existed yet at the time) to only what was real then: necessary/technical
+// cookies plus Fourvenues' checkout widget. Google Analytics (GA4) and
+// Microsoft Clarity were reintroduced when the site migrated from WordPress
+// to Next.js (same GA4 property, 475752389/G-REG9BSZ0G1, and same Clarity
+// project, vgg76zsg27, the WordPress site already used — see
+// cookie-consent.tsx) — this text was updated to match, together with
+// actually shipping the consent mechanism this policy had promised
+// ("cuando se instalen herramientas de análisis... se habilitará un
+// mecanismo de consentimiento previo a su instalación", section 6): GA4 and
+// Clarity now only load after the visitor accepts via that banner, never
+// unconditionally on page view. Meta Pixel, TikTok Pixel and Nevent are
+// still not installed — update this again if/when that changes.
 
 const DISPLAY = "'Inter', 'Helvetica Neue', 'Arial Black', sans-serif";
 const BODY = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
@@ -161,9 +160,10 @@ export default function CookiesPolicyContent({ heading = true }: { heading?: boo
           para más detalle.
         </p>
         <p style={pStyle}>
-          POCCO CLUB no utiliza actualmente cookies de análisis, publicidad o redes sociales en pocco.club. Si en el
-          futuro se incorporan herramientas de este tipo, esta política se actualizará antes de su activación e
-          indicará el mecanismo de consentimiento correspondiente.
+          <strong style={{ color: "#f5f5f5" }}>Cookies de análisis.</strong> POCCO CLUB utiliza cookies de análisis
+          (Google Analytics y Microsoft Clarity) para conocer cómo los usuarios interactúan con pocco.club. Estas
+          cookies no son estrictamente necesarias y solo se instalan si el usuario da su consentimiento a través del
+          panel de cookies que aparece al visitar el sitio (ver apartado 6).
         </p>
       </Section>
 
@@ -177,6 +177,36 @@ export default function CookiesPolicyContent({ heading = true }: { heading?: boo
           se realiza a través de un widget de Fourvenues embebido directamente en la web. Al utilizar esta
           funcionalidad, Fourvenues puede instalar sus propias cookies conforme a su propia política de privacidad y
           cookies, necesarias para el funcionamiento del proceso de compra.
+        </p>
+        <p style={pStyle}>
+          <strong style={{ color: "#f5f5f5" }}>Google Analytics (Google LLC).</strong> Herramienta de analítica web
+          que permite conocer el número de visitantes, las páginas más visitadas y el comportamiento general de
+          navegación en pocco.club, de forma agregada. Solo se activa si el usuario acepta las cookies de análisis.
+          Más información en la{" "}
+          <a
+            href="https://policies.google.com/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "#e21212" }}
+          >
+            política de privacidad de Google
+          </a>
+          .
+        </p>
+        <p style={pStyle}>
+          <strong style={{ color: "#f5f5f5" }}>Microsoft Clarity (Microsoft Corporation).</strong> Herramienta de
+          analítica que registra de forma anonimizada cómo los usuarios navegan por la web (mapas de calor,
+          grabaciones de sesión) para ayudar a mejorar la experiencia de uso. Solo se activa si el usuario acepta las
+          cookies de análisis. Más información en la{" "}
+          <a
+            href="https://privacy.microsoft.com/es-es/privacystatement"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "#e21212" }}
+          >
+            política de privacidad de Microsoft
+          </a>
+          .
         </p>
         <p style={pStyle}>
           La utilización concreta de proveedores adicionales dependerá de las herramientas que se encuentren activas
@@ -209,6 +239,18 @@ export default function CookiesPolicyContent({ heading = true }: { heading?: boo
                 <td style={tableCellStyle}>Compra de entradas y gestión de reservas</td>
                 <td style={tableCellStyle}>Necesaria (funcional)</td>
               </tr>
+              <tr>
+                <td style={tableCellStyle}>_ga, _ga_*</td>
+                <td style={tableCellStyle}>Google Analytics</td>
+                <td style={tableCellStyle}>Estadísticas de uso y navegación</td>
+                <td style={tableCellStyle}>Análisis (requiere consentimiento)</td>
+              </tr>
+              <tr>
+                <td style={tableCellStyle}>_clck, _clsk</td>
+                <td style={tableCellStyle}>Microsoft Clarity</td>
+                <td style={tableCellStyle}>Mapas de calor y grabación de sesiones</td>
+                <td style={tableCellStyle}>Análisis (requiere consentimiento)</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -222,20 +264,23 @@ export default function CookiesPolicyContent({ heading = true }: { heading?: boo
           al ser imprescindibles para prestar el servicio solicitado por el usuario en ese momento.
         </p>
         <p style={pStyle}>
-          Si en el futuro pocco.club incorpora cookies que no sean estrictamente necesarias (por ejemplo de
-          análisis o publicidad), se habilitará un mecanismo de consentimiento previo a su instalación, y esta
-          política se actualizará para describirlo.
+          Las cookies de análisis (Google Analytics y Microsoft Clarity) no son necesarias y solo se instalan si el
+          usuario pulsa «Aceptar» en el panel de cookies que aparece al visitar pocco.club por primera vez. Si el
+          usuario pulsa «Rechazar», estas cookies no se instalan y la navegación continúa con normalidad.
         </p>
       </Section>
 
       <Section number="7" title="Configuración de las preferencias">
         <p style={pStyle}>
-          El usuario puede eliminar o bloquear las cookies existentes en su dispositivo desde la configuración de su
-          propio navegador (ver apartado 9).
+          El usuario puede aceptar o rechazar las cookies de análisis desde el panel que aparece al visitar
+          pocco.club. Su elección se recuerda en el navegador utilizado, de modo que el panel no vuelve a mostrarse
+          en visitas posteriores desde el mismo dispositivo y navegador.
         </p>
         <p style={pStyle}>
-          Cuando pocco.club incorpore un panel de configuración de cookies propio, este apartado se actualizará para
-          explicar cómo modificar o retirar el consentimiento desde dicho panel.
+          Para cambiar una elección ya realizada, el usuario puede borrar los datos de navegación almacenados por
+          este sitio (almacenamiento local) desde la configuración de su navegador, lo que hará que el panel de
+          cookies vuelva a mostrarse en la siguiente visita. También puede eliminar o bloquear las cookies existentes
+          en su dispositivo desde la configuración de su propio navegador (ver apartado 10).
         </p>
       </Section>
 

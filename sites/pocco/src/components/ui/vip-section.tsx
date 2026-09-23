@@ -22,10 +22,14 @@ import { WHATSAPP_URL } from "@/lib/site-data";
 
 const DISPLAY = "'Inter', 'Helvetica Neue', 'Arial Black', sans-serif";
 
+// Same three photos gallery-section.tsx also uses — each gets its own
+// description here too (previously all three shared the single generic
+// "Zona VIP en POCCO"), matching what's actually in each photo rather
+// than a repeated placeholder across three genuinely different images.
 const IMAGES = [
-  "/assets/gallery/pocco-02.webp",
-  "/assets/gallery/pocco-08.webp",
-  "/assets/gallery/pocco-05.webp",
+  { src: "/assets/gallery/pocco-02.webp", alt: "Ambiente de fiesta en la zona VIP de POCCO Club" },
+  { src: "/assets/gallery/pocco-08.webp", alt: "Reservado VIP con público disfrutando en POCCO Club" },
+  { src: "/assets/gallery/pocco-05.webp", alt: "Entrada de POCCO Club con su cartel de neón" },
 ];
 
 export default function VipSection() {
@@ -121,7 +125,7 @@ export default function VipSection() {
           height: "clamp(240px, 26vw, 300px)",
         }}
       >
-        {IMAGES.map((src, i) => {
+        {IMAGES.map(({ src, alt }, i) => {
           const rotation = i === 0 ? -8 : i === 2 ? 8 : 0;
           const offsetX = i === 0 ? "-30%" : i === 2 ? "30%" : "0%";
           return (
@@ -143,7 +147,7 @@ export default function VipSection() {
             >
               <Image
                 src={src}
-                alt="Zona VIP en POCCO"
+                alt={alt}
                 fill
                 quality={90}
                 sizes="(max-width: 640px) 45vw, 200px"

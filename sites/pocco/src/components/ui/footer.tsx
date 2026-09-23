@@ -62,6 +62,33 @@ export default function Footer() {
         SEE YOU INSIDE.
       </p>
 
+      {/* Real, crawlable body text — previously the whole homepage carried
+          almost no indexable prose outside its <head> metadata (everything
+          else is video/animation-driven sections with short display copy),
+          which left Google little actual text to match against a search
+          like "discoteca Alzira" or "fiestas fin de semana Valencia". Kept
+          short and in the footer's own quiet, muted style rather than
+          competing with any section's real content — this exists for
+          crawlers and screen readers, not as a new visual element. */}
+      <p
+        style={{
+          fontFamily: BODY,
+          fontSize: 13,
+          color: "rgba(245,245,245,0.45)",
+          margin: "1.6rem auto 0",
+          lineHeight: 1.6,
+          maxWidth: 520,
+        }}
+      >
+        POCCO Club es la discoteca de referencia en Alzira (Valencia), con
+        fiestas cada fin de semana y reservados VIP para grupos. Consulta
+        el{" "}
+        <Link href="/eventos" style={{ color: "inherit", textDecoration: "underline" }}>
+          calendario de próximos eventos
+        </Link>{" "}
+        o ven directamente a vivir la noche en la Ribera.
+      </p>
+
       <p
         style={{
           fontFamily: BODY,

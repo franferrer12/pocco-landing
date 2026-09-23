@@ -37,17 +37,24 @@ import { motion, useScroll, useTransform, type MotionValue } from "framer-motion
 
 const DISPLAY = "'Inter', 'Helvetica Neue', 'Arial Black', sans-serif";
 
-type Tile = { src: string; position?: string };
+type Tile = { src: string; position?: string; alt: string };
 
 /* Keep in sync with the actual contents of public/assets/gallery/. Order
-   matters only in that it's the cycling order tiles get filled in. */
+   matters only in that it's the cycling order tiles get filled in.
+   `alt` describes what's actually in that specific photo (real event
+   photos shot on location — see the module comment above), not a generic
+   "gallery photo" placeholder — previously every tile rendered alt="",
+   which is correct only for a purely decorative image; these are real
+   content Google Images can index against searches like "discoteca
+   Alzira fotos" or "ambiente POCCO Club", so each one gets its own
+   description instead of being invisible to that. */
 const PHOTOS: Tile[] = [
-  { src: "/assets/gallery/pocco-01.webp", position: "center 35%" },
-  { src: "/assets/gallery/pocco-02.webp" },
-  { src: "/assets/gallery/pocco-03.webp" },
-  { src: "/assets/gallery/pocco-05.webp", position: "center 30%" },
-  { src: "/assets/gallery/pocco-08.webp" },
-  { src: "/assets/gallery/pocco-10.webp" },
+  { src: "/assets/gallery/pocco-01.webp", position: "center 35%", alt: "Pista de baile de POCCO Club iluminada con láser rojo y humo" },
+  { src: "/assets/gallery/pocco-02.webp", alt: "Ambiente de fiesta en POCCO Club, Alzira, con la pista llena" },
+  { src: "/assets/gallery/pocco-03.webp", alt: "Cabina de DJ en directo durante una noche en POCCO Club" },
+  { src: "/assets/gallery/pocco-05.webp", position: "center 30%", alt: "Cartel de neón POCCO Club en la entrada del local" },
+  { src: "/assets/gallery/pocco-08.webp", alt: "Público disfrutando de la noche en POCCO Club, Alzira" },
+  { src: "/assets/gallery/pocco-10.webp", alt: "Juegos de luces y láser sobre la pista de POCCO Club" },
 ];
 
 /* Fills `columnSizes` (one entry per column, its tile count) by cycling
@@ -107,7 +114,7 @@ function GalleryTile({ tile, eager }: { tile: Tile; eager?: boolean }) {
     >
       <Image
         src={tile.src}
-        alt=""
+        alt={tile.alt}
         fill
         quality={90}
         // Desktop tiles need to load eagerly, not lazily: they live inside a

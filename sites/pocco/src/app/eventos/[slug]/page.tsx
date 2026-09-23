@@ -93,6 +93,23 @@ export default async function EventPage({ params }: { params: Promise<Params> })
   const event = await fetchEventBySlug(slug);
   if (!event) notFound();
 
+  // Other upcoming events, for the cross-link block at the bottom of the
+  // page — previously each /eventos/[slug] page was an isolated dead end
+  // (its only outbound link was "← Todos los eventos"), with no path from
+  // one event page to another, which is both a worse visitor experience
+  // (someone reading about tonight's event has no reason to know next
+  // week's exists) and a missed internal-linking signal for crawling —
+  // Google discovers and re-crawls pages faster when they link to each
+  // other, not just from one shared index. Same date range as the rest of
+  // this page's own data (fetchEventBySlug already covers a year out).
+  const now = new Date();
+  const oneYearOut = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+  const allEvents = await fetchEvents(now, oneYearOut);
+  const otherEvents = allEvents
+    .filter((e) => e.slug !== event.slug && e.end * 1000 >= Date.now())
+    .sort((a, b) => a.date - b.date)
+    .slice(0, 2);
+
   const startIso = new Date(event.start * 1000).toISOString();
   const endIso = new Date(event.end * 1000).toISOString();
   const isPast = event.end * 1000 < Date.now();
@@ -134,6 +151,20 @@ export default async function EventPage({ params }: { params: Promise<Params> })
     },
   };
 
+  // Mirrors the real "← Todos los eventos" trail visible on the page below
+  // (Inicio → Eventos → this event's name) — previously the page had no
+  // BreadcrumbList at all, which Google sometimes renders directly in
+  // search results as a path under the title instead of the raw URL.
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Inicio", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "Eventos", item: `${SITE_URL}/eventos` },
+      { "@type": "ListItem", position: 3, name: event.name, item: `${SITE_URL}/eventos/${event.slug}` },
+    ],
+  };
+
   return (
     <main>
       <script
@@ -141,6 +172,11 @@ export default async function EventPage({ params }: { params: Promise<Params> })
         // eslint-disable-next-line react/no-danger -- static JSON-LD built
         // server-side from Fourvenues' own API data, not raw user input
         dangerouslySetInnerHTML={{ __html: JSON.stringify(eventJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger -- static JSON-LD, no user input
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
       <header
         style={{
@@ -190,7 +226,14 @@ export default async function EventPage({ params }: { params: Promise<Params> })
                 border: "1px solid rgba(255,255,255,0.1)",
               }}
             >
-              <Image src={event.flyer} alt={event.name} fill sizes="420px" style={{ objectFit: "cover" }} priority />
+              <Image
+                src={event.flyer}
+                alt={`Flyer de ${event.name} — ${formatEventDate(event.date)} en POCCO Club, Alzira`}
+                fill
+                sizes="420px"
+                style={{ objectFit: "cover" }}
+                priority
+              />
             </div>
           )}
 
@@ -293,6 +336,83 @@ export default async function EventPage({ params }: { params: Promise<Params> })
           {!isPast && (
             <div style={{ marginTop: "5vh" }}>
               <EventPageCheckout shortCode={eventShortCode(event.url)} />
+            </div>
+          )}
+
+          {otherEvents.length > 0 && (
+            <div style={{ marginTop: "7vh", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "5vh" }}>
+              <p
+                style={{
+                  fontFamily: DISPLAY,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  color: "rgba(245,245,245,0.5)",
+                  textTransform: "uppercase",
+                  textAlign: "center",
+                  margin: "0 0 2.4rem",
+                }}
+              >
+                Otros eventos
+              </p>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: "1.2rem",
+                }}
+              >
+                {otherEvents.map((other) => (
+                  <Link
+                    key={other._id}
+                    href={`/eventos/${other.slug}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 14,
+                      textDecoration: "none",
+                      color: "inherit",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 14,
+                      padding: 12,
+                      background: "#0a0a0a",
+                    }}
+                  >
+                    {other.flyer && (
+                      <div style={{ position: "relative", width: 56, height: 56, borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
+                        <Image src={other.flyer} alt="" fill sizes="56px" style={{ objectFit: "cover" }} />
+                      </div>
+                    )}
+                    <div style={{ minWidth: 0 }}>
+                      <p
+                        style={{
+                          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                          fontSize: 12,
+                          color: "#e21212",
+                          margin: "0 0 2px",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {formatEventDate(other.date)}
+                      </p>
+                      <p
+                        style={{
+                          fontFamily: DISPLAY,
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: "#f5f5f5",
+                          margin: 0,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {other.name}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
         </div>

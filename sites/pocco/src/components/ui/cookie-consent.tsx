@@ -101,23 +101,32 @@ export default function CookieConsent() {
           aria-label="Consentimiento de cookies"
           style={{
             position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: 0,
+            left: 16,
+            right: 16,
+            bottom: 16,
+            // Compact floating card, not a full-width bar — same visual
+            // language as the legal popups (footer.tsx's LegalModal): dark
+            // panel, rounded corners, a real border, capped width so it
+            // reads as a small card in the corner rather than a strip
+            // spanning the whole viewport. maxWidth keeps it corner-sized
+            // on desktop; the left/right:16 above lets it fill the
+            // available width edge-to-edge (minus margin) on a narrow
+            // phone instead.
+            maxWidth: 380,
+            marginLeft: "auto",
             zIndex: 300,
-            padding: "16px 6vw",
+            padding: "18px 20px",
             background: "#111",
-            borderTop: "1px solid rgba(255,255,255,0.1)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 16,
+            boxShadow: "0 12px 32px rgba(0,0,0,0.5)",
             display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 16,
+            flexDirection: "column",
+            gap: 14,
           }}
         >
           <p
             style={{
-              flex: "1 1 320px",
               margin: 0,
               fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
               fontSize: 13,
@@ -130,11 +139,12 @@ export default function CookieConsent() {
             <span style={{ textDecoration: "underline" }}>Política de Cookies</span>{" "}
             en el pie de página para más info.
           </p>
-          <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 10 }}>
             <button
               onClick={() => choose("rejected")}
               style={{
-                padding: "10px 20px",
+                flex: 1,
+                padding: "10px 16px",
                 borderRadius: 999,
                 border: "1px solid rgba(255,255,255,0.25)",
                 background: "transparent",
@@ -150,7 +160,8 @@ export default function CookieConsent() {
             <button
               onClick={() => choose("accepted")}
               style={{
-                padding: "10px 20px",
+                flex: 1,
+                padding: "10px 16px",
                 borderRadius: 999,
                 border: "none",
                 background: "#e21212",

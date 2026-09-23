@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Footer from "@/components/ui/footer";
 import { PillNav } from "@/components/ui/pill-nav";
+import { EventPageCheckout } from "@/components/ui/event-page-checkout";
 import { SITE_NAME, SITE_URL, ADDRESS, WHATSAPP_URL } from "@/lib/site-data";
 import { fetchEvents, fetchEventBySlug, madridDateParts, translateOutfit, eventShortCode } from "@/lib/events";
 
@@ -15,8 +16,10 @@ import { fetchEvents, fetchEventBySlug, madridDateParts, translateOutfit, eventS
 // Event schema, instead of every event only existing inside a client-side
 // modal with no URL of its own. Ticket purchase itself still happens on
 // Fourvenues — their API is read-only, there's no way to take a real
-// payment here — so the CTA below deep-links to Fourvenues' own checkout
-// for this event via its short code (see eventShortCode in lib/events.ts).
+// payment here — so the CTA below embeds Fourvenues' own checkout widget
+// in place (via EventPageCheckout/EventCheckoutEmbed), exactly like the
+// homepage's own EventModal does, instead of sending visitors away to
+// fourvenues.com in a new tab.
 
 const DISPLAY = "'Inter', 'Helvetica Neue', 'Arial Black', sans-serif";
 
@@ -253,39 +256,18 @@ export default async function EventPage({ params }: { params: Promise<Params> })
               <span>{ADDRESS.streetAddress}, {ADDRESS.addressLocality}</span>
             </div>
 
-            <div style={{ marginTop: "3vh" }}>
-              {isPast ? (
-                <p
-                  style={{
-                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                    fontSize: 14,
-                    color: "rgba(245,245,245,0.4)",
-                  }}
-                >
-                  Este evento ya ha finalizado.
-                </p>
-              ) : (
-                <a
-                  href={checkoutUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    padding: "12px 32px",
-                    borderRadius: 999,
-                    background: "#e21212",
-                    color: "#f5f5f5",
-                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                    fontSize: 15,
-                    fontWeight: 500,
-                    textDecoration: "none",
-                  }}
-                >
-                  Conseguir entrada
-                </a>
-              )}
-            </div>
+            {isPast && (
+              <p
+                style={{
+                  marginTop: "3vh",
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontSize: 14,
+                  color: "rgba(245,245,245,0.4)",
+                }}
+              >
+                Este evento ya ha finalizado.
+              </p>
+            )}
 
             <p style={{ marginTop: "2vh" }}>
               <a
@@ -303,6 +285,16 @@ export default async function EventPage({ params }: { params: Promise<Params> })
               </a>
             </p>
           </div>
+
+          {/* Same embedded Fourvenues checkout the homepage's EventModal
+              uses — opens in place on this page, not a new tab to
+              fourvenues.com, matching exactly how ticket purchase works
+              everywhere else on the site. */}
+          {!isPast && (
+            <div style={{ marginTop: "5vh" }}>
+              <EventPageCheckout shortCode={eventShortCode(event.url)} />
+            </div>
+          )}
         </div>
       </section>
 

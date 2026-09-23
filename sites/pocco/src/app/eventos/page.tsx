@@ -1,22 +1,19 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import Image from "next/image";
 import Footer from "@/components/ui/footer";
 import { PillNav } from "@/components/ui/pill-nav";
+import { FourvenuesEventsWidget } from "@/components/ui/fourvenues-events-widget";
 import { SITE_NAME, SITE_URL } from "@/lib/site-data";
-import { fetchEvents, madridDateParts } from "@/lib/events";
+import { fetchEvents } from "@/lib/events";
 
-// /eventos — SEO discovery layer for the club's event listing, sourced live
-// from the same Fourvenues API the homepage calendar (events-calendar.tsx)
-// already reads, but rendered server-side so each event gets a real,
-// crawlable, indexable URL under /eventos/[slug] — something the homepage's
-// client-rendered, modal-based calendar can't provide on its own (no page
-// per event, nothing for a crawler or a shared link to land on individually).
-// This page itself stays a plain index: cards linking out to each event's
-// own page, which is where the actual Event schema and full description
-// live. Not a replacement for the homepage calendar (which keeps its own
-// richer UX — month grid, "this weekend" highlight, in-page checkout modal)
-// — this is the version built for search and for sharing a single event.
+// /eventos — deliberately embeds Fourvenues' own full events-listing widget
+// (FourvenuesEventsWidget) instead of a listing built from our own API data
+// — a conscious choice to keep this page visually/behaviorally distinct
+// from /eventos/[slug] (which DOES render its own layout from live API
+// data, with its own JSON-LD per event) and from the homepage's own
+// EventsCalendar. The ItemList JSON-LD below still points at our own
+// /eventos/[slug] URLs, not Fourvenues' — those are the real, indexable,
+// crawlable per-event pages; this page's own body is just Fourvenues' UI,
+// used here as the on-page browsing/checkout experience.
 
 export const revalidate = 300; // matches fetchEvents' own cache window
 
@@ -29,25 +26,13 @@ export const metadata: Metadata = {
 
 const DISPLAY = "'Inter', 'Helvetica Neue', 'Arial Black', sans-serif";
 
-const WEEKDAY_LONG = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-const MONTH_LONG = [
-  "enero", "febrero", "marzo", "abril", "mayo", "junio",
-  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-];
-
-function formatEventDate(unixSeconds: number): string {
-  const { year, month, day } = madridDateParts(unixSeconds);
-  const weekday = WEEKDAY_LONG[new Date(year, month, day).getDay()];
-  return `${weekday} ${day} de ${MONTH_LONG[month]}`;
-}
-
 export default async function EventosPage() {
   const now = new Date();
   const oneYearOut = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
   const events = await fetchEvents(now, oneYearOut);
 
-  // Upcoming only, soonest first — a past event has no reason to rank in a
-  // listing page whose whole point is "what's on next".
+  // Upcoming only, soonest first — used only to build the ItemList JSON-LD
+  // below, not rendered as our own cards on this page anymore.
   const upcoming = events
     .filter((e) => e.end * 1000 >= now.getTime())
     .sort((a, b) => a.date - b.date);
@@ -131,81 +116,9 @@ export default async function EventosPage() {
           </p>
         </div>
 
-        {upcoming.length === 0 ? (
-          <p
-            style={{
-              textAlign: "center",
-              marginTop: "8vh",
-              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              color: "rgba(245,245,245,0.5)",
-            }}
-          >
-            No hay eventos publicados por ahora. Vuelve pronto.
-          </p>
-        ) : (
-          <div
-            style={{
-              maxWidth: 1000,
-              margin: "8vh auto 0",
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-              gap: "1.6rem",
-            }}
-          >
-            {upcoming.map((event) => (
-              <Link
-                key={event._id}
-                href={`/eventos/${event.slug}`}
-                style={{
-                  display: "block",
-                  textDecoration: "none",
-                  color: "inherit",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: 16,
-                  overflow: "hidden",
-                  background: "#0a0a0a",
-                }}
-              >
-                <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1" }}>
-                  <Image
-                    src={event.flyer}
-                    alt={event.name}
-                    fill
-                    sizes="(max-width: 640px) 90vw, 300px"
-                    style={{ objectFit: "cover" }}
-                  />
-                </div>
-                <div style={{ padding: "1.2rem 1.4rem" }}>
-                  <p
-                    style={{
-                      fontFamily: DISPLAY,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      letterSpacing: "0.08em",
-                      color: "#e21212",
-                      margin: "0 0 0.4rem",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {formatEventDate(event.date)}
-                  </p>
-                  <p
-                    style={{
-                      fontFamily: DISPLAY,
-                      fontSize: "clamp(17px, 2vw, 20px)",
-                      fontWeight: 800,
-                      color: "#f5f5f5",
-                      margin: 0,
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {event.name}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+        <div style={{ maxWidth: 720, margin: "8vh auto 0" }}>
+          <FourvenuesEventsWidget />
+        </div>
       </section>
 
       <Footer />

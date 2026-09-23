@@ -125,20 +125,36 @@ export default function CookieConsent() {
             gap: 14,
           }}
         >
-          <p
-            style={{
-              margin: 0,
-              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-              fontSize: 13,
-              lineHeight: 1.5,
-              color: "rgba(245,245,245,0.7)",
-            }}
-          >
-            Usamos cookies de análisis para entender cómo se usa esta web.
-            Puedes aceptarlas o rechazarlas — consulta la{" "}
-            <span style={{ textDecoration: "underline" }}>Política de Cookies</span>{" "}
-            en el pie de página para más info.
-          </p>
+          <div>
+            <p
+              style={{
+                margin: "0 0 6px",
+                fontFamily: "'Inter', 'Helvetica Neue', 'Arial Black', sans-serif",
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: "#e21212",
+              }}
+            >
+              Antes de entrar
+            </p>
+            <p
+              style={{
+                margin: 0,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontSize: 13,
+                lineHeight: 1.5,
+                color: "rgba(245,245,245,0.7)",
+              }}
+            >
+              Usamos alguna cookie para saber qué funciona en esta web y qué no —
+              nada de rastrearte por internet, solo mejorar la fiesta. Tú decides.
+              Detalles en la{" "}
+              <span style={{ textDecoration: "underline" }}>Política de Cookies</span>{" "}
+              del pie de página.
+            </p>
+          </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button
               onClick={() => choose("rejected")}
@@ -172,7 +188,7 @@ export default function CookieConsent() {
                 cursor: "pointer",
               }}
             >
-              Aceptar
+              Vale, acepto
             </button>
           </div>
         </div>

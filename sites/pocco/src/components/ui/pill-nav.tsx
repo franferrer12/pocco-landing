@@ -25,14 +25,14 @@ interface NavItem {
 // rounded-cap stroke icons), not the filled Line Awesome set used before, which
 // read visually inconsistent with the reference.
 //
-// Only Home/Eventos/Ubicación exist for now — more tabs (and their own real
-// pages) get added here once those pages exist, per request ("hasta que
-// hagamos más páginas"). Contacto/Mail was replaced by Ubicación/MapPin
-// since there's no contact page yet, but there is a real Ubicación section
-// on this same page worth linking straight to.
+// Eventos is a real link to /eventos (its own indexable page, see
+// src/app/eventos) rather than an in-page anchor — previously it only
+// scrolled to the homepage's own #eventos calendar section, with no way to
+// land directly on a crawlable events listing. Ubicación stays an in-page
+// anchor since there's no standalone location page.
 const NAV_ITEMS: NavItem[] = [
   { label: "Home", id: "home", icon: Home, href: "/" },
-  { label: "Eventos", id: "eventos", icon: Calendar, anchor: "#eventos" },
+  { label: "Eventos", id: "eventos", icon: Calendar, href: "/eventos" },
   { label: "Ubicación", id: "ubicacion", icon: MapPin, anchor: "#ubicacion" },
 ];
 
@@ -59,11 +59,10 @@ const NAV_ITEMS: NavItem[] = [
  * addition to navigating.
  */
 export const PillNav: React.FC = () => {
-  // Whichever nav item's `href` matches the actual current route starts active
-  // (e.g. loading/refreshing on "/" shows Home highlighted, not a hardcoded
-  // default) — falls back to "eventos" only when the current route isn't one
-  // of the href-based items (Eventos/Ubicación have no route of their own,
-  // they're in-page scroll-to buttons).
+  // Whichever nav item's `href` matches the actual current route starts
+  // active (e.g. loading/refreshing on "/" shows Home highlighted, "/eventos"
+  // shows Eventos highlighted) — falls back to "eventos" only on a route with
+  // no matching nav item at all (e.g. a legal page), same default as before.
   const pathname = usePathname();
   const initialId = NAV_ITEMS.find((item) => item.href === pathname)?.id ?? "eventos";
   const [activeId, setActiveId] = useState<string>(initialId);

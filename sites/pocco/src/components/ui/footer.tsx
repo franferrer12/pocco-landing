@@ -86,7 +86,12 @@ export default function Footer() {
         <Link href="/eventos" style={{ color: "inherit", textDecoration: "underline" }}>
           calendario de próximos eventos
         </Link>{" "}
-        o ven directamente a vivir la noche en la Ribera.
+        o ven directamente a vivir la noche en la Ribera. ¿Buscas espacio
+        para una comunión, cumpleaños o evento de empresa? Consulta el{" "}
+        <Link href="/alquiler-sala" style={{ color: "inherit", textDecoration: "underline" }}>
+          alquiler de sala
+        </Link>
+        .
       </p>
 
       <p

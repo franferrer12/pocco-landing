@@ -37,3 +37,14 @@ export const WHATSAPP_URL = "https://wa.me/message/A3BHIH24Q6M4L1";
 export const INSTAGRAM_URL = "https://www.instagram.com/pocco.club/";
 
 export const SOCIAL_URLS = [INSTAGRAM_URL, WHATSAPP_URL];
+
+// wa.me/message/<code> (the pre-approved WhatsApp Business "click to chat"
+// link used everywhere else on the site) opens a chat but can't prefill its
+// text — only the plain wa.me/<phone>?text=... form supports that, built
+// from the same E.164 number above so it can't drift from it. Used by the
+// alquiler-sala rental-inquiry form (rental-request-form.tsx) to hand off
+// a visitor's filled-in form as a ready-composed WhatsApp message instead
+// of a blank chat they'd have to write themselves.
+export function buildWhatsAppMessageUrl(message: string): string {
+  return `https://wa.me/${PHONE_E164.replace("+", "")}?text=${encodeURIComponent(message)}`;
+}

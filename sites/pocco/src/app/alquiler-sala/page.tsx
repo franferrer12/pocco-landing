@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Footer from "@/components/ui/footer";
 import { PillNav } from "@/components/ui/pill-nav";
+import RentalHero from "@/components/ui/rental-hero";
 import RentalRequestForm from "@/components/ui/rental-request-form";
 import { SITE_NAME, SITE_URL, ADDRESS, PHONE_E164, EMAIL } from "@/lib/site-data";
 
@@ -152,52 +153,13 @@ export default function AlquilerSalaPage() {
         </div>
       </header>
 
-      {/* Hero */}
-      <section style={{ background: "#000", padding: "18vh 6vw 8vh", textAlign: "center" }}>
-        <div style={{ maxWidth: 720, margin: "0 auto" }}>
-          <p
-            style={{
-              fontFamily: DISPLAY,
-              fontSize: "clamp(12px, 1.4vw, 14px)",
-              fontWeight: 700,
-              letterSpacing: "0.12em",
-              color: "#e21212",
-              margin: "0 0 0.8rem",
-            }}
-          >
-            ALQUILER DE SALA
-          </p>
-          <h1
-            style={{
-              fontFamily: DISPLAY,
-              fontSize: "clamp(32px, 5.5vw, 56px)",
-              fontWeight: 900,
-              color: "#f5f5f5",
-              margin: 0,
-              lineHeight: 1.05,
-              letterSpacing: "-0.02em",
-            }}
-          >
-            Tu celebración, en POCCO Club.
-          </h1>
-          <p
-            style={{
-              fontFamily: BODY,
-              fontSize: "clamp(15px, 1.6vw, 18px)",
-              lineHeight: 1.6,
-              color: "rgba(245,245,245,0.6)",
-              maxWidth: 520,
-              margin: "1.4rem auto 0",
-            }}
-          >
-            Alquila el espacio en Alzira para tu comunión, bautizo, cumpleaños
-            o evento de empresa. Espacio, sonido y barra listos para tu día.
-          </p>
-        </div>
-      </section>
+      <RentalHero />
 
-      {/* Tipos de evento */}
-      <section style={{ background: "#000", padding: "2vh 6vw 8vh" }}>
+      {/* Tipos de evento — anchor target for the Hero's "Ver las salas ↓"
+          CTA. Temporary: once the "Las Salas" section (POCCO / Lo Nuestro,
+          from the approved narrative brief) is built, #salas should move
+          there instead — this is the next real section in the DOM today. */}
+      <section id="salas" style={{ background: "#000", padding: "2vh 6vw 8vh" }}>
         <div
           style={{
             maxWidth: 1000,

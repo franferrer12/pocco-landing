@@ -28,6 +28,14 @@ export interface FvEvent {
   age: number;
   outfit: string;
   location_town: string;
+  // DJs/artists billed for the event — confirmed real in the raw API
+  // response (both currently-live events return `artists: []`, not a
+  // missing field), so it's just not filled in yet when the club creates
+  // an event in Fourvenues' own dashboard. Typed as unknown[] rather than
+  // a specific shape since neither live event has a populated example to
+  // confirm the real element shape from — narrow this once one does.
+  artists: unknown[];
+  music_genres: string[];
   visible: boolean;
   active: boolean;
 }

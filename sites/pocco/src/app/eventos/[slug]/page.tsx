@@ -115,6 +115,17 @@ export default async function EventPage({ params }: { params: Promise<Params> })
   const isPast = event.end * 1000 < Date.now();
   const checkoutUrl = `https://fourvenues.com/pocco-club#events/${eventShortCode(event.url)}`;
 
+  // Fourvenues' API returns a real `artists` field (confirmed in the raw
+  // response — both live events return `artists: []`, not a missing key),
+  // but the club hasn't filled it in for any event created so far, so
+  // there's no confirmed real element shape to type against yet — this
+  // accepts either a plain string or an object carrying a `name` and
+  // silently skips anything else, rather than assuming one shape and
+  // breaking the moment a real entry doesn't match it.
+  const performerNames = event.artists
+    .map((a) => (typeof a === "string" ? a : (a as { name?: unknown })?.name))
+    .filter((name): name is string => typeof name === "string" && name.length > 0);
+
   const eventJsonLd = {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -140,9 +151,24 @@ export default async function EventPage({ params }: { params: Promise<Params> })
       name: SITE_NAME,
       url: SITE_URL,
     },
+    // Omitted entirely when empty (the common case today) rather than
+    // emitted as an empty array — schema.org validators/Search Console
+    // read a present-but-empty `performer` as worse than an absent one.
+    performer: performerNames.length > 0
+      ? performerNames.map((name) => ({ "@type": "PerformingGroup", name }))
+      : undefined,
+    // Real ticket prices (120€ VIP tarima, 100€ VIP barriles, 0€ lista
+    // +25 — seen live inside Fourvenues' own checkout embed) aren't
+    // exposed anywhere in their read-only API, so there's no real number
+    // to report here. Google's own structured-data guidance for Event
+    // says to use price: "0" rather than omit the field entirely when
+    // the real price isn't available at schema-generation time — the
+    // page's own visible checkout (EventPageCheckout below) is what
+    // actually shows the real tiered pricing to a visitor.
     offers: {
       "@type": "Offer",
       url: checkoutUrl,
+      price: "0",
       priceCurrency: "EUR",
       availability: isPast
         ? "https://schema.org/SoldOut"

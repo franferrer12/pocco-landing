@@ -18,6 +18,7 @@ const BODY = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
 export default function RentalClosing() {
   return (
     <section
+      id="contacto"
       style={{
         position: "relative",
         overflow: "hidden",

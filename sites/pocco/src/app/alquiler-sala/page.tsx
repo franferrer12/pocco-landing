@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Footer from "@/components/ui/footer";
-import { PillNav } from "@/components/ui/pill-nav";
+import { RentalPillNav } from "@/components/ui/rental-pill-nav";
 import RentalHero from "@/components/ui/rental-hero";
 import RentalStatement from "@/components/ui/rental-statement";
 import RentalRoomsSection from "@/components/ui/rental-rooms-section";
@@ -25,12 +25,16 @@ import { RENTAL_ROOMS } from "@/lib/rental-rooms";
 // position 40-70) — there was no page on the site that could satisfy that
 // search intent at all before this one.
 //
-// Deliberately NOT added as a 4th PillNav tab — that nav is a small,
-// deliberately minimal set (Home/Eventos/Ubicación) built around the
-// club's own nightlife visitors; this page serves a different audience
-// (someone planning a private daytime event) and is discovered instead via
-// the footer's own cross-link and a short teaser from the homepage,
-// without competing for space in the primary nav.
+// Deliberately NOT added as a 4th tab on the homepage's own PillNav — that
+// nav is a small, deliberately minimal set (Home/Eventos/Ubicación) built
+// around the club's own nightlife visitors, whose items are all no-ops on
+// this page anyway (they scroll to sections that only exist on "/"). This
+// page gets its own nav instead (RentalPillNav, built on the shared
+// PillNavShell — see pill-nav-shell.tsx) with items that actually make
+// sense here: anchors to this page's own sections plus a contact CTA,
+// same floating-pill look as the homepage's nav. The page itself is
+// discovered via the footer's own cross-link and a short teaser from the
+// homepage, without competing for space in the primary nav.
 //
 // Full 10-section narrative rebuild (from the site owner's own approved
 // brief): desire → identification → space → experience → price →
@@ -166,7 +170,7 @@ export default function AlquilerSalaPage() {
           }}
         >
           <div style={{ pointerEvents: "auto" }}>
-            <PillNav />
+            <RentalPillNav />
           </div>
         </header>
 

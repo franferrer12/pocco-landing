@@ -211,6 +211,7 @@ export default function RentalExtras() {
 
         {/* Catering */}
         <p
+          id="catering"
           style={{
             fontFamily: DISPLAY,
             fontSize: "clamp(22px, 3.4vw, 32px)",
@@ -219,6 +220,7 @@ export default function RentalExtras() {
             textAlign: "center",
             margin: "0 0 0.6rem",
             letterSpacing: "-0.02em",
+            scrollMarginTop: "16vh",
           }}
         >
           CATERING DESDE 15,50€/PERSONA

@@ -29,11 +29,14 @@ interface NavItem {
 // — see git history) per explicit request: this shared PillNav is meant to
 // stay the homepage's own nav, scrolling straight to its #eventos calendar
 // section. It only does that while already on "/" — on any other page
-// (/eventos, /eventos/[slug], /alquiler-sala) there's no #eventos section
-// to scroll to, so the click is a no-op there for now; those pages are
-// meant to get their own page-specific nav later instead of trying to
-// make this one shared component behave correctly everywhere. Ubicación
-// stays an in-page anchor too, same reasoning, no standalone location page.
+// there's no #eventos section to scroll to, so the click is a no-op there;
+// this component is meant to render only on the homepage from here on.
+// Non-home pages get their own page-specific nav instead, built on the
+// shared PillNavShell this component's own visual/interaction mechanism
+// was extracted into (see pill-nav-shell.tsx and, for the first such page,
+// rental-pill-nav.tsx) rather than trying to make this one shared item
+// list behave correctly everywhere. Ubicación stays an in-page anchor too,
+// same reasoning, no standalone location page.
 const NAV_ITEMS: NavItem[] = [
   { label: "Home", id: "home", icon: Home, href: "/" },
   { label: "Eventos", id: "eventos", icon: Calendar, anchor: "#eventos" },

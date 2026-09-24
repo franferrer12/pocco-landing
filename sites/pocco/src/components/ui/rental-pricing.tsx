@@ -18,7 +18,7 @@ export default function RentalPricing() {
   const room = RENTAL_ROOMS.find((r) => r.id === selectedRoom)!;
 
   return (
-    <section style={{ background: "#000", padding: "6vh 6vw 10vh", textAlign: "center" }}>
+    <section id="precio" style={{ background: "#000", padding: "6vh 6vw 10vh", textAlign: "center" }}>
       <p
         style={{
           fontFamily: DISPLAY,

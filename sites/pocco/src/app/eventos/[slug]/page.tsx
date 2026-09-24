@@ -126,6 +126,14 @@ export default async function EventPage({ params }: { params: Promise<Params> })
     .map((a) => (typeof a === "string" ? a : (a as { name?: unknown })?.name))
     .filter((name): name is string => typeof name === "string" && name.length > 0);
 
+  // Falls back to the club itself when Fourvenues has no artist loaded
+  // for this event (the case for every event so far) — Search Console
+  // flags an entirely absent `performer` as a (non-critical) issue, and
+  // the site owner confirmed this generic fallback over leaving it out:
+  // once a real DJ/artist is loaded in Fourvenues' own dashboard,
+  // performerNames above is what actually gets used instead.
+  const performers = performerNames.length > 0 ? performerNames : [SITE_NAME];
+
   const eventJsonLd = {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -151,12 +159,7 @@ export default async function EventPage({ params }: { params: Promise<Params> })
       name: SITE_NAME,
       url: SITE_URL,
     },
-    // Omitted entirely when empty (the common case today) rather than
-    // emitted as an empty array — schema.org validators/Search Console
-    // read a present-but-empty `performer` as worse than an absent one.
-    performer: performerNames.length > 0
-      ? performerNames.map((name) => ({ "@type": "PerformingGroup", name }))
-      : undefined,
+    performer: performers.map((name) => ({ "@type": "PerformingGroup", name })),
     // Real ticket prices (120€ VIP tarima, 100€ VIP barriles, 0€ lista
     // +25 — seen live inside Fourvenues' own checkout embed) aren't
     // exposed anywhere in their read-only API, so there's no real number

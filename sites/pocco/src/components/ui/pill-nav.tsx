@@ -25,14 +25,18 @@ interface NavItem {
 // rounded-cap stroke icons), not the filled Line Awesome set used before, which
 // read visually inconsistent with the reference.
 //
-// Eventos is a real link to /eventos (its own indexable page, see
-// src/app/eventos) rather than an in-page anchor — previously it only
-// scrolled to the homepage's own #eventos calendar section, with no way to
-// land directly on a crawlable events listing. Ubicación stays an in-page
-// anchor since there's no standalone location page.
+// Eventos is back to an in-page anchor (was briefly a real link to /eventos
+// — see git history) per explicit request: this shared PillNav is meant to
+// stay the homepage's own nav, scrolling straight to its #eventos calendar
+// section. It only does that while already on "/" — on any other page
+// (/eventos, /eventos/[slug], /alquiler-sala) there's no #eventos section
+// to scroll to, so the click is a no-op there for now; those pages are
+// meant to get their own page-specific nav later instead of trying to
+// make this one shared component behave correctly everywhere. Ubicación
+// stays an in-page anchor too, same reasoning, no standalone location page.
 const NAV_ITEMS: NavItem[] = [
   { label: "Home", id: "home", icon: Home, href: "/" },
-  { label: "Eventos", id: "eventos", icon: Calendar, href: "/eventos" },
+  { label: "Eventos", id: "eventos", icon: Calendar, anchor: "#eventos" },
   { label: "Ubicación", id: "ubicacion", icon: MapPin, anchor: "#ubicacion" },
 ];
 
@@ -60,9 +64,10 @@ const NAV_ITEMS: NavItem[] = [
  */
 export const PillNav: React.FC = () => {
   // Whichever nav item's `href` matches the actual current route starts
-  // active (e.g. loading/refreshing on "/" shows Home highlighted, "/eventos"
-  // shows Eventos highlighted) — falls back to "eventos" only on a route with
-  // no matching nav item at all (e.g. a legal page), same default as before.
+  // active (e.g. loading/refreshing on "/" shows Home highlighted) — falls
+  // back to "eventos" on any other route (Eventos/Ubicación have no route
+  // of their own, they're in-page scroll-to buttons), same default this
+  // had before Eventos briefly became a real link.
   const pathname = usePathname();
   const initialId = NAV_ITEMS.find((item) => item.href === pathname)?.id ?? "eventos";
   const [activeId, setActiveId] = useState<string>(initialId);

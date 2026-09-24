@@ -1,10 +1,19 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Footer from "@/components/ui/footer";
 import { PillNav } from "@/components/ui/pill-nav";
 import RentalHero from "@/components/ui/rental-hero";
-import RentalRequestForm from "@/components/ui/rental-request-form";
+import RentalStatement from "@/components/ui/rental-statement";
+import RentalRoomsSection from "@/components/ui/rental-rooms-section";
+import RentalExperience from "@/components/ui/rental-experience";
+import RentalPricing from "@/components/ui/rental-pricing";
+import RentalIncludes from "@/components/ui/rental-includes";
+import RentalExtras from "@/components/ui/rental-extras";
+import RentalAccess from "@/components/ui/rental-access";
+import RentalGallery from "@/components/ui/rental-gallery";
+import RentalClosing from "@/components/ui/rental-closing";
+import { RentalRoomProvider } from "@/components/ui/rental-room-context";
 import { SITE_NAME, SITE_URL, ADDRESS, PHONE_E164, EMAIL } from "@/lib/site-data";
+import { RENTAL_ROOMS } from "@/lib/rental-rooms";
 
 // /alquiler-sala — commercial/B2C page for renting the venue for private
 // events (communions, birthdays, company events), distinct in purpose from
@@ -22,6 +31,22 @@ import { SITE_NAME, SITE_URL, ADDRESS, PHONE_E164, EMAIL } from "@/lib/site-data
 // (someone planning a private daytime event) and is discovered instead via
 // the footer's own cross-link and a short teaser from the homepage,
 // without competing for space in the primary nav.
+//
+// Full 10-section narrative rebuild (from the site owner's own approved
+// brief): desire → identification → space → experience → price →
+// personalization → confidence → conversion, replacing the original
+// single-pass "dossier de tarifas" layout (hero → sala → precio →
+// incluidos → galería → formulario → FAQ) with the fuller recorrido:
+// Hero → Statement → Las Salas → Experiencia → Precio → Incluido →
+// Extras/Catering → Acceso previo → Galería → FAQ → Cierre. Each section
+// is its own component (rental-*.tsx) built in one pass per the site
+// owner's own instruction ("haz todo de una tirada") — visual polish is
+// expected to be iterated on afterward, not this pass's job.
+//
+// RentalRoomProvider wraps the whole body (not just the sections that use
+// it) so "Las Salas", "Experiencia" and "Precio" all read/write the same
+// POCCO/Lo Nuestro selection without prop-drilling through the FAQ/gallery
+// sections in between that don't care about it.
 
 const DISPLAY = "'Inter', 'Helvetica Neue', 'Arial Black', sans-serif";
 const BODY = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
@@ -29,13 +54,17 @@ const BODY = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
 export const metadata: Metadata = {
   title: "Alquiler de Sala para Eventos en Alzira",
   description:
-    "Alquila POCCO Club para tu comunión, bautizo, cumpleaños o evento de empresa en Alzira (Valencia). Espacio, sonido y barra para tu celebración privada.",
+    "Alquila POCCO Club para tu comunión, bautizo, cumpleaños o evento de empresa en Alzira (Valencia). Dos salas, sonido, barra y catering para tu celebración privada.",
   alternates: { canonical: "/alquiler-sala" },
 };
 
 // schema.org/Service rather than /Event — this page offers the venue
 // itself, not a scheduled event with its own date, so Event's required
 // startDate/endDate don't apply the way they do on /eventos/[slug].
+// hasOfferCatalog lists both real rooms with their own real per-hour
+// pricing (AggregateOffer, since each room has a day/night rate rather
+// than one fixed price) — previously this page only described the
+// service generically with no priced offers at all.
 const SERVICE_JSON_LD = {
   "@context": "https://schema.org",
   "@type": "Service",
@@ -59,6 +88,20 @@ const SERVICE_JSON_LD = {
     "@type": "Audience",
     audienceType: "Particulares y empresas",
   },
+  hasOfferCatalog: {
+    "@type": "OfferCatalog",
+    name: "Salas disponibles para alquiler",
+    itemListElement: RENTAL_ROOMS.map((room) => ({
+      "@type": "Offer",
+      name: room.name,
+      priceSpecification: {
+        "@type": "AggregateOffer",
+        lowPrice: room.pricing.dayPrice,
+        highPrice: room.pricing.nightPrice,
+        priceCurrency: "EUR",
+      },
+    })),
+  },
 };
 
 const BREADCRUMB_JSON_LD = {
@@ -70,299 +113,124 @@ const BREADCRUMB_JSON_LD = {
   ],
 };
 
-const EVENT_TYPES = [
-  {
-    title: "Comuniones y bautizos",
-    copy: "El espacio se adapta para una celebración de día, con la sala montada a tu gusto y todo el equipo técnico ya disponible.",
-  },
-  {
-    title: "Cumpleaños y celebraciones privadas",
-    copy: "Tu fiesta, tu gente, sin compartir la noche con nadie más. Barra, sonido y pista solo para tu grupo.",
-  },
-  {
-    title: "Eventos de empresa",
-    copy: "Cenas de empresa, presentaciones o after-works corporativos en un espacio con personalidad, no en un salón genérico.",
-  },
-];
-
-const INCLUDES = [
-  "Aforo amplio para grupos grandes",
-  "Barra y servicio de bebidas",
-  "Equipo de sonido y DJ profesional",
-  "Horario flexible según tu evento",
-];
-
-// Reuses three of the club's own real photos (already described/alt-texted
-// in gallery-section.tsx, per the site owner's own answer to use what
-// already exists rather than wait on new daytime/empty-room photography).
-const GALLERY_IMAGES = [
-  { src: "/assets/gallery/pocco-03.webp", alt: "Cabina de DJ y equipo de sonido de POCCO Club" },
-  { src: "/assets/gallery/pocco-01.webp", alt: "Pista y zona principal de POCCO Club" },
-  { src: "/assets/gallery/pocco-05.webp", alt: "Entrada de POCCO Club en Alzira" },
-];
-
 const RENTAL_FAQS = [
   {
-    q: "¿Cuál es el aforo máximo de la sala?",
-    a: "Depende de la disposición que necesite tu evento. Cuéntanos el número de invitados en el formulario y te confirmamos el aforo exacto para tu celebración.",
+    q: "¿Cuál es el aforo máximo de cada sala?",
+    a: "La Sala Pocco admite hasta 400 personas y la Sala Lo Nuestro hasta 150. Cuéntanos el número de invitados en el formulario y te confirmamos la sala más adecuada.",
   },
   {
-    q: "¿Puedo traer mi propio catering?",
-    a: "Sí, es posible. Lo hablamos directamente contigo según el tipo de evento y horario.",
+    q: "¿Puedo traer mi propio catering o bebida?",
+    a: "Sí. Puedes traer tu propia comida y bebida sin problema, o elegir uno de nuestros tres menús de catering (desde 15,50€/persona).",
   },
   {
     q: "¿Con cuánta antelación hay que reservar?",
     a: "Cuanto antes mejor, sobre todo para fechas de temporada alta (comuniones en primavera, Navidad). Escríbenos y te confirmamos disponibilidad real.",
   },
   {
-    q: "¿El precio incluye sonido y DJ?",
-    a: "El equipo de sonido y DJ ya están disponibles en la sala. Te damos un presupuesto cerrado según lo que necesite tu evento.",
+    q: "¿El precio incluye limpieza, vasos y hielo?",
+    a: "Sí, en ambas salas. Limpieza completa, vasos y hielo ilimitado ya están incluidos en el precio del alquiler, sin coste adicional.",
+  },
+  {
+    q: "¿Tengo acceso a la sala antes del evento?",
+    a: "Sí. El día anterior a tu evento tienes entre 2 y 3 horas de acceso previo para montar decoración, mobiliario y dejar preparada tu bebida o comida.",
   },
 ];
 
 export default function AlquilerSalaPage() {
   return (
-    <main>
-      <script
-        type="application/ld+json"
-        // eslint-disable-next-line react/no-danger -- static JSON-LD, no user input
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(SERVICE_JSON_LD) }}
-      />
-      <script
-        type="application/ld+json"
-        // eslint-disable-next-line react/no-danger -- static JSON-LD, no user input
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_JSON_LD) }}
-      />
+    <RentalRoomProvider>
+      <main>
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger -- static JSON-LD, no user input
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(SERVICE_JSON_LD) }}
+        />
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger -- static JSON-LD, no user input
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(BREADCRUMB_JSON_LD) }}
+        />
 
-      <header
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "2.4vh 2.6vw",
-          pointerEvents: "none",
-        }}
-      >
-        <div style={{ pointerEvents: "auto" }}>
-          <PillNav />
-        </div>
-      </header>
-
-      <RentalHero />
-
-      {/* Tipos de evento — anchor target for the Hero's "Ver las salas ↓"
-          CTA. Temporary: once the "Las Salas" section (POCCO / Lo Nuestro,
-          from the approved narrative brief) is built, #salas should move
-          there instead — this is the next real section in the DOM today. */}
-      <section id="salas" style={{ background: "#000", padding: "2vh 6vw 8vh" }}>
-        <div
+        <header
           style={{
-            maxWidth: 1000,
-            margin: "0 auto",
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            gap: "1.4rem",
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "2.4vh 2.6vw",
+            pointerEvents: "none",
           }}
         >
-          {EVENT_TYPES.map((type) => (
-            <div
-              key={type.title}
-              style={{
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 16,
-                padding: "1.6rem",
-                background: "#0a0a0a",
-              }}
-            >
-              <p
-                style={{
-                  fontFamily: DISPLAY,
-                  fontSize: "clamp(16px, 1.8vw, 19px)",
-                  fontWeight: 800,
-                  color: "#f5f5f5",
-                  margin: "0 0 0.6rem",
-                }}
-              >
-                {type.title}
-              </p>
-              <p
-                style={{
-                  fontFamily: BODY,
-                  fontSize: 14,
-                  lineHeight: 1.6,
-                  color: "rgba(245,245,245,0.55)",
-                  margin: 0,
-                }}
-              >
-                {type.copy}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Qué incluye */}
-      <section style={{ background: "#000", padding: "2vh 6vw 8vh" }}>
-        <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
-          <h2
-            style={{
-              fontFamily: DISPLAY,
-              fontSize: "clamp(24px, 3.6vw, 36px)",
-              fontWeight: 900,
-              color: "#f5f5f5",
-              margin: "0 0 2rem",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            Qué incluye
-          </h2>
-          <ul
-            style={{
-              listStyle: "none",
-              margin: 0,
-              padding: 0,
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: "1rem",
-              textAlign: "left",
-            }}
-          >
-            {INCLUDES.map((item) => (
-              <li
-                key={item}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 10,
-                  fontFamily: BODY,
-                  fontSize: 14,
-                  color: "rgba(245,245,245,0.7)",
-                }}
-              >
-                <span style={{ color: "#e21212", fontWeight: 700 }}>✓</span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* Galería */}
-      <section style={{ background: "#000", padding: "2vh 6vw 8vh" }}>
-        <div
-          style={{
-            maxWidth: 1000,
-            margin: "0 auto",
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "1rem",
-          }}
-        >
-          {GALLERY_IMAGES.map((img) => (
-            <div
-              key={img.src}
-              style={{
-                position: "relative",
-                aspectRatio: "4 / 5",
-                borderRadius: 14,
-                overflow: "hidden",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
-            >
-              <Image
-                src={img.src}
-                alt={img.alt}
-                fill
-                sizes="(max-width: 640px) 90vw, 320px"
-                style={{ objectFit: "cover" }}
-              />
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Formulario de solicitud */}
-      <section style={{ background: "#000", padding: "2vh 6vw 10vh" }}>
-        <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
-          <h2
-            style={{
-              fontFamily: DISPLAY,
-              fontSize: "clamp(24px, 3.6vw, 36px)",
-              fontWeight: 900,
-              color: "#f5f5f5",
-              margin: "0 0 0.6rem",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            Solicita información
-          </h2>
-          <p
-            style={{
-              fontFamily: BODY,
-              fontSize: 14,
-              color: "rgba(245,245,245,0.5)",
-              margin: "0 0 2.4rem",
-            }}
-          >
-            Cuéntanos tu evento y te respondemos con disponibilidad y presupuesto.
-          </p>
-          <RentalRequestForm />
-        </div>
-      </section>
-
-      {/* FAQ del alquiler */}
-      <section style={{ background: "#000", padding: "2vh 6vw 12vh" }}>
-        <div style={{ maxWidth: 640, margin: "0 auto" }}>
-          <h2
-            style={{
-              fontFamily: DISPLAY,
-              fontSize: "clamp(24px, 3.6vw, 36px)",
-              fontWeight: 900,
-              color: "#f5f5f5",
-              margin: "0 0 2rem",
-              letterSpacing: "-0.01em",
-              textAlign: "center",
-            }}
-          >
-            Preguntas frecuentes
-          </h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
-            {RENTAL_FAQS.map((faq) => (
-              <div key={faq.q}>
-                <p
-                  style={{
-                    fontFamily: DISPLAY,
-                    fontSize: 15,
-                    fontWeight: 700,
-                    color: "#f5f5f5",
-                    margin: "0 0 0.4rem",
-                  }}
-                >
-                  {faq.q}
-                </p>
-                <p
-                  style={{
-                    fontFamily: BODY,
-                    fontSize: 14,
-                    lineHeight: 1.6,
-                    color: "rgba(245,245,245,0.55)",
-                    margin: 0,
-                  }}
-                >
-                  {faq.a}
-                </p>
-              </div>
-            ))}
+          <div style={{ pointerEvents: "auto" }}>
+            <PillNav />
           </div>
-        </div>
-      </section>
+        </header>
 
-      <Footer />
-    </main>
+        <RentalHero />
+        <RentalStatement />
+        <RentalRoomsSection />
+        <RentalExperience />
+        <RentalPricing />
+        <RentalIncludes />
+        <RentalExtras />
+        <RentalAccess />
+        <RentalGallery />
+
+        {/* FAQ del alquiler */}
+        <section style={{ background: "#000", padding: "2vh 6vw 12vh" }}>
+          <div style={{ maxWidth: 640, margin: "0 auto" }}>
+            <h2
+              style={{
+                fontFamily: DISPLAY,
+                fontSize: "clamp(24px, 3.6vw, 36px)",
+                fontWeight: 900,
+                color: "#f5f5f5",
+                margin: "0 0 2rem",
+                letterSpacing: "-0.01em",
+                textAlign: "center",
+              }}
+            >
+              Preguntas frecuentes
+            </h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
+              {RENTAL_FAQS.map((faq) => (
+                <div key={faq.q}>
+                  <p
+                    style={{
+                      fontFamily: DISPLAY,
+                      fontSize: 15,
+                      fontWeight: 700,
+                      color: "#f5f5f5",
+                      margin: "0 0 0.4rem",
+                    }}
+                  >
+                    {faq.q}
+                  </p>
+                  <p
+                    style={{
+                      fontFamily: BODY,
+                      fontSize: 14,
+                      lineHeight: 1.6,
+                      color: "rgba(245,245,245,0.55)",
+                      margin: 0,
+                    }}
+                  >
+                    {faq.a}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <RentalClosing />
+
+        <Footer />
+      </main>
+    </RentalRoomProvider>
   );
 }
